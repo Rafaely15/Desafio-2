@@ -155,18 +155,30 @@ footer { visibility: hidden; }
 .hist-date  { font-size: 0.74rem; color: #666; margin-top: 2px; }
 .hist-colab { font-size: 0.72rem; color: #0f3460; font-style: italic; margin-top: 1px; }
 
-/* Reduz altura da área de câmera e upload */
-[data-testid="stCameraInput"] video,
-[data-testid="stCameraInput"] img { max-height: 200px !important; }
-[data-testid="stCameraInputButton"] { padding: 6px 12px !important; font-size: 0.8rem !important; }
+/* Upload compacto */
 section[data-testid="stFileUploadDropzone"] {
     padding: 12px 16px !important;
-    min-height: 80px !important;
+    min-height: 70px !important;
 }
 section[data-testid="stFileUploadDropzone"] > div {
     font-size: 0.82rem !important;
 }
-[data-testid="stCameraInput"] { max-height: 220px; overflow: hidden; }
+
+/* Câmera — sem limit de altura para o botão aparecer */
+[data-testid="stCameraInput"] video { max-height: 240px !important; }
+[data-testid="stCameraInput"] img   { max-height: 240px !important; }
+
+/* Botão "Tirar foto" em destaque */
+[data-testid="stCameraInputButton"] > button {
+    background-color: #e94560 !important;
+    color: white !important;
+    font-weight: 700 !important;
+    font-size: 0.9rem !important;
+    padding: 10px 24px !important;
+    border-radius: 8px !important;
+    width: 100% !important;
+    margin-top: 6px !important;
+}
 
 .status-banner-ok {
     background: linear-gradient(90deg, #1a1a2e, #0f3460);
