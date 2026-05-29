@@ -1,14 +1,22 @@
 """
-Treina YOLOv11n-seg para deteccao/segmentacao de trincas em paredes.
+Treina YOLOv11-seg para deteccao/segmentacao de rachaduras em paredes.
 
-Uso:
-    python src/train.py [--data data/dataset_split/data.yaml]
-                        [--epochs 100]
-                        [--imgsz 640]
-                        [--batch 16]
-                        [--device cpu]
-                        [--project results/runs]
-                        [--name crack_seg_yolo11n]
+Experimentos recomendados (em ordem de impacto esperado):
+
+  Baseline (ja treinado):
+    python src/train.py --epochs 100 --imgsz 640  --model yolo11n-seg.pt  --name v1_nano_640
+
+  Exp 1 — mais epocas (modelo nao havia convergido em 100):
+    python src/train.py --epochs 200 --imgsz 640  --model yolo11n-seg.pt  --name v2_nano_640_200ep
+
+  Exp 2 — resolucao maior (maior ganho para fissuras finas):
+    python src/train.py --epochs 150 --imgsz 1280 --model yolo11n-seg.pt  --batch 8 --name v3_nano_1280
+
+  Exp 3 — modelo maior (mais capacidade):
+    python src/train.py --epochs 150 --imgsz 640  --model yolo11s-seg.pt  --name v4_small_640
+
+  Exp 4 — combinacao otima:
+    python src/train.py --epochs 150 --imgsz 1280 --model yolo11s-seg.pt  --batch 8 --name v5_small_1280
 """
 
 import argparse
@@ -19,18 +27,16 @@ from ultralytics import YOLO
 
 SEED = 42
 
-# Augmentations justificados para dataset pequeno de trincas:
-#   - fliplr/flipud: trincas nao tem orientacao canonica
-#   - degrees: trincas aparecem em qualquer angulo na parede
-#   - hsv_v / hsv_s: variacao de iluminacao e sombras no canteiro
-#   - mosaic: aumenta variacao de contexto com dataset pequeno
-#   - scale: trincas aparecem em diferentes distancias de captura
-#   - shear/perspective: leve deformacao geometrica simula angulos de camera
-#   - copy_paste: mistura instancias de segmentacao entre imagens (eficaz para seg)
+# Augmentations para dataset pequeno de rachaduras.
+# Melhorias em relacao ao v1:
+#   - erasing 0.4->0.2: random erasing apagava pixels de fissuras finas, prejudicando recall
+#   - copy_paste 0.3->0.5: mais mixtura de instancias melhora generalizacao em dataset pequeno
+#   - degrees 15->20: rachaduras podem ter qualquer orientacao na parede
+#   - cos_lr=True: learning rate cosine annealing converge melhor em treinos longos (>100 ep)
 AUGMENT_OVERRIDES = {
     "fliplr":      0.5,
     "flipud":      0.3,
-    "degrees":     15.0,
+    "degrees":     20.0,
     "hsv_v":       0.4,
     "hsv_s":       0.4,
     "hsv_h":       0.015,
@@ -38,8 +44,10 @@ AUGMENT_OVERRIDES = {
     "shear":       2.0,
     "perspective": 0.0005,
     "mosaic":      1.0,
-    "copy_paste":  0.3,
-    "mixup":       0.0,   # mixup prejudica bordas finas de trincas
+    "copy_paste":  0.5,   # aumentado: mais diversidade de instancias
+    "mixup":       0.0,   # mixup prejudica bordas finas
+    "erasing":     0.2,   # reduzido: evitar apagar pixels de fissuras finas
+    "cos_lr":      True,  # cosine LR annealing — melhor para treinos longos
 }
 
 
@@ -48,15 +56,16 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--data",    type=Path,
                    default=Path("data/dataset_split/data.yaml"))
     p.add_argument("--model",   type=str,  default="yolo11n-seg.pt",
-                   help="Checkpoint de partida (yolo11n-seg.pt para fine-tuning)")
-    p.add_argument("--epochs",  type=int,  default=100)
+                   help="yolo11n-seg.pt (nano) ou yolo11s-seg.pt (small, +3-5 mAP, +40%% VRAM)")
+    p.add_argument("--epochs",  type=int,  default=200,
+                   help="200 recomendado: o modelo ainda nao havia convergido em 100 epocas.")
     p.add_argument("--imgsz",   type=int,  default=640,
-                   help="Imagens redimensionadas para 640 no treino. "
-                        "Originais sao 2560x1440 -- o resize e feito internamente.")
+                   help="Use 1280 para melhor deteccao de fissuras finas "
+                        "(originais 2560x1440 -- downscale 4:1 a 640 apaga detalhes).")
     p.add_argument("--batch",   type=int,  default=16,
-                   help="Reduza para 8 se GPU com < 6 GB VRAM, ou use -1 (auto).")
-    p.add_argument("--patience",type=int,  default=20,
-                   help="Early stopping: para se val/mAP nao melhorar em N epochs.")
+                   help="Use 8 para imgsz=1280 na RTX 4050 (6 GB VRAM).")
+    p.add_argument("--patience",type=int,  default=30,
+                   help="Aumentado para 30: evita parar cedo em platôs temporarios.")
     p.add_argument("--device",  type=str,  default="0",
                    help="'0' para GPU CUDA 0, 'cpu' para CPU.")
     p.add_argument("--project", type=str,  default="results/runs")
@@ -110,7 +119,9 @@ def main() -> None:
     models_dir.mkdir(exist_ok=True)
     if best_src.exists():
         import shutil
-        dest = models_dir / "best_crack_seg_yolo11n.pt"
+        # Nome do destino inclui o experimento para nao sobrescrever versoes anteriores
+        safe_name = args.name.replace("/", "_")
+        dest = models_dir / f"best_{safe_name}.pt"
         shutil.copy2(best_src, dest)
         print(f"\nMelhor modelo copiado para: {dest}")
 
