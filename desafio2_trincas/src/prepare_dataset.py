@@ -24,7 +24,7 @@ DEFAULT_SPLIT = (0.70, 0.20, 0.10)
 SEED = 42
 IMG_EXT = ".jpg"
 LBL_EXT = ".txt"
-CLASS_NAMES = ["crack"]          # única classe identificada na Etapa 0
+CLASS_NAMES = ["rachadura"]       # única classe identificada na Etapa 0
 
 
 def parse_args() -> argparse.Namespace:
