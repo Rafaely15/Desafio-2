@@ -33,7 +33,7 @@ HISTORICO_FILE.parent.mkdir(exist_ok=True)
 
 # ── CSS ────────────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Inspetor de Qualidade — Engenharia Civil",
+    page_title="Registro de Rachaduras e Fissuras",
     page_icon="🏗️",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -41,21 +41,22 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-.block-container { padding-top: 0rem !important; }
+.block-container { padding-top: 0.5rem !important; }
 [data-testid="stSidebar"] > div:first-child { padding-top: 0rem; }
 
 .header-bar {
     background: linear-gradient(90deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
     color: white;
-    padding: 14px 24px;
+    padding: 16px 28px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-bottom: 3px solid #e94560;
-    margin: -1rem -1rem 1rem -1rem;
+    border-bottom: 4px solid #e94560;
+    border-radius: 10px;
+    margin-bottom: 1rem;
 }
 .header-title {
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     font-weight: 700;
     letter-spacing: 2px;
     color: white;
@@ -275,7 +276,7 @@ for key, val in [("historico", load_historico()), ("resultado", None),
 st.markdown("""
 <div class="header-bar">
   <div class="header-icons">☰</div>
-  <div class="header-title">🏗️ &nbsp; Inspetor de Qualidade — Engenharia Civil</div>
+  <div class="header-title">🏗️ &nbsp; Registro de Rachaduras e Fissuras</div>
   <div class="header-icons">👷</div>
 </div>
 """, unsafe_allow_html=True)
