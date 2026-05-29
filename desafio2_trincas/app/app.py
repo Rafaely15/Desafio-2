@@ -41,43 +41,10 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-/* Esconde apenas o rodapé e o botão Deploy — mantém o hambúrguer do mobile */
+/* Limpo — não mexe no header nativo (hambúrguer funciona no mobile) */
 footer { visibility: hidden; }
-[data-testid="stToolbar"] { display: none !important; }
-/* No desktop esconde o MainMenu pois usamos o nosso header */
-@media (min-width: 768px) {
-    #MainMenu { visibility: hidden; }
-    header[data-testid="stHeader"] { display: none !important; }
-}
-
-.block-container { padding-top: 1rem !important; }
+.block-container { padding-top: 0.5rem !important; }
 [data-testid="stSidebar"] > div:first-child { padding-top: 0rem; }
-
-.header-bar {
-    background: linear-gradient(90deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
-    color: white;
-    padding: 16px 28px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 4px solid #e94560;
-    border-radius: 10px;
-    margin-bottom: 1.2rem;
-}
-.header-title {
-    font-size: 1.15rem;
-    font-weight: 700;
-    letter-spacing: 2px;
-    color: white;
-    text-transform: uppercase;
-    white-space: nowrap;
-}
-.header-icons { font-size: 1.4rem; }
-
-@media (max-width: 600px) {
-    .header-title { font-size: 0.85rem; letter-spacing: 1px; }
-    .header-bar { padding: 12px 14px; }
-}
 
 .logo-box {
     background: #1a1a2e;
@@ -300,23 +267,15 @@ for key, val in [("historico", load_historico()), ("resultado", None),
 
 
 # ── Cabeçalho ──────────────────────────────────────────────────────────────────
-st.markdown("""
-<div class="header-bar">
-  <div class="header-icons">☰</div>
-  <div class="header-title">🏗️ &nbsp; Registro de Rachaduras</div>
-  <div class="header-icons">👷</div>
-</div>
-""", unsafe_allow_html=True)
+st.markdown("## 🏗️ Registro de Rachaduras e Fissuras")
+st.markdown("---")
 
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("""
-    <div class="logo-box">
-      <div class="logo-icon">🏗️</div>
-      <div class="logo-text">Residência IA</div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("### 🏗️ Residência IA")
+    st.caption("Inspetor de Qualidade — Engenharia Civil")
+    st.divider()
 
     # ── Histórico ────────────────────────────────────────────────────────────
     st.markdown('<div class="section-title">📋 Diário de Obra (Histórico)</div>',
