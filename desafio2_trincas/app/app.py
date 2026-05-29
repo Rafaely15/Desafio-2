@@ -41,7 +41,12 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-.block-container { padding-top: 0.5rem !important; }
+/* Esconde barra nativa do Streamlit */
+#MainMenu { visibility: hidden; }
+header[data-testid="stHeader"] { display: none !important; }
+footer { visibility: hidden; }
+
+.block-container { padding-top: 1rem !important; }
 [data-testid="stSidebar"] > div:first-child { padding-top: 0rem; }
 
 .header-bar {
@@ -53,7 +58,7 @@ st.markdown("""
     justify-content: space-between;
     border-bottom: 4px solid #e94560;
     border-radius: 10px;
-    margin-bottom: 1rem;
+    margin-bottom: 1.2rem;
 }
 .header-title {
     font-size: 1.15rem;
