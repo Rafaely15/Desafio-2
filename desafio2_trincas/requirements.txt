@@ -1,0 +1,12 @@
+ultralytics==8.3.145
+torch==2.5.1
+torchvision==0.20.1
+opencv-python==4.10.0.84
+Pillow==11.1.0
+PyYAML==6.0.2
+numpy==1.26.4
+matplotlib==3.9.4
+seaborn==0.13.2
+streamlit==1.41.1
+onnx==1.17.0
+onnxruntime==1.20.1

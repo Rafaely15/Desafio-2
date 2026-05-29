@@ -1,0 +1,7 @@
+names:
+- crack
+nc: 1
+path: C:\Users\Carla Batista\Desktop\Desafio-2\desafio2_trincas\data\dataset_split
+test: test/images
+train: train/images
+val: val/images
