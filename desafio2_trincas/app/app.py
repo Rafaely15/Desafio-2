@@ -308,22 +308,6 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Colaborador ──────────────────────────────────────────────────────────
-    with st.expander("👷 Colaborador", expanded=True):
-        nome_colab  = st.text_input("Nome completo", placeholder="Ex: João Silva",
-                                    key="nome_colab")
-        cargo_colab = st.selectbox("Cargo", CARGOS, key="cargo_colab")
-
-    # Exibe badge do colaborador ativo
-    if nome_colab:
-        st.markdown(f"""
-        <div class="colab-box">
-          <div class="colab-label">👤 Responsável pelo registro</div>
-          <div class="colab-name">{nome_colab}</div>
-          <div class="colab-cargo">{cargo_colab}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
     # ── Histórico ────────────────────────────────────────────────────────────
     st.markdown('<div class="section-title">📋 Diário de Obra (Histórico)</div>',
                 unsafe_allow_html=True)
@@ -401,6 +385,31 @@ if not Path(MODEL_PATH).exists():
 
 model = load_model(MODEL_PATH)
 
+# ── Colaborador — sempre visível no mobile ─────────────────────────────────────
+st.markdown("#### 👷 Colaborador")
+col_nome, col_cargo = st.columns([2, 1])
+with col_nome:
+    nome_colab = st.text_input("Nome completo", placeholder="Ex: João Silva",
+                               key="nome_colab", label_visibility="collapsed")
+with col_cargo:
+    cargo_colab = st.selectbox("Cargo", CARGOS, key="cargo_colab",
+                               label_visibility="collapsed")
+
+if nome_colab:
+    st.markdown(f"""
+    <div style="background:#f0f4ff;border:1px solid #c5d0f0;border-radius:8px;
+                padding:8px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:1.4rem;">👤</span>
+      <span>
+        <strong style="color:#1a1a2e;">{nome_colab}</strong>
+        <span style="color:#0f3460;font-size:0.85rem;margin-left:8px;">{cargo_colab}</span>
+      </span>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.divider()
+
+# ── Upload + Câmera ────────────────────────────────────────────────────────────
 col_up, col_cam = st.columns(2)
 with col_up:
     st.markdown("#### 📁 Enviar foto")
