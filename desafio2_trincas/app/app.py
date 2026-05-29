@@ -41,10 +41,14 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-/* Esconde barra nativa do Streamlit */
-#MainMenu { visibility: hidden; }
-header[data-testid="stHeader"] { display: none !important; }
+/* Esconde apenas o rodapé e o botão Deploy — mantém o hambúrguer do mobile */
 footer { visibility: hidden; }
+[data-testid="stToolbar"] { display: none !important; }
+/* No desktop esconde o MainMenu pois usamos o nosso header */
+@media (min-width: 768px) {
+    #MainMenu { visibility: hidden; }
+    header[data-testid="stHeader"] { display: none !important; }
+}
 
 .block-container { padding-top: 1rem !important; }
 [data-testid="stSidebar"] > div:first-child { padding-top: 0rem; }
@@ -66,8 +70,14 @@ footer { visibility: hidden; }
     letter-spacing: 2px;
     color: white;
     text-transform: uppercase;
+    white-space: nowrap;
 }
 .header-icons { font-size: 1.4rem; }
+
+@media (max-width: 600px) {
+    .header-title { font-size: 0.85rem; letter-spacing: 1px; }
+    .header-bar { padding: 12px 14px; }
+}
 
 .logo-box {
     background: #1a1a2e;
@@ -293,7 +303,7 @@ for key, val in [("historico", load_historico()), ("resultado", None),
 st.markdown("""
 <div class="header-bar">
   <div class="header-icons">☰</div>
-  <div class="header-title">🏗️ &nbsp; Registro de Rachaduras e Fissuras</div>
+  <div class="header-title">🏗️ &nbsp; Registro de Rachaduras</div>
   <div class="header-icons">👷</div>
 </div>
 """, unsafe_allow_html=True)
