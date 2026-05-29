@@ -21,10 +21,12 @@ from PIL import Image
 from ultralytics import YOLO
 
 # ── Constantes ─────────────────────────────────────────────────────────────────
-MODELOS = {
-    "v3 — 1280px (recomendado)": "models/best_v3_nano_1280.pt",
-    "v1 — 640px  (baseline)":    "models/best_crack_seg_yolo11n.pt",
-}
+# Configurações fixas — removidas da interface para simplificar uso em campo
+MODEL_PATH  = "models/best_v3_nano_1280.pt"
+CONF        = 0.15
+IOU         = 0.45
+IMGSZ       = 1280
+
 CARGOS = ["Engenheiro(a)", "Mestre de Obras", "Técnico(a)", "Inspetor(a)", "Outro"]
 HISTORICO_FILE = Path("results/historico_inspecoes.json")
 HISTORICO_FILE.parent.mkdir(exist_ok=True)
@@ -108,15 +110,26 @@ st.markdown("""
 
 .section-title {
     background: #1a1a2e;
-    color: #aab;
-    font-size: 0.65rem;
+    color: #dde;
+    font-size: 0.78rem;
     font-weight: 700;
     letter-spacing: 2px;
     text-transform: uppercase;
-    padding: 5px 10px;
+    padding: 7px 12px;
     border-radius: 6px;
-    margin: 8px 0 6px 0;
+    margin: 10px 0 8px 0;
 }
+
+/* Sidebar — textos maiores */
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] .stTextInput label,
+[data-testid="stSidebar"] .stSelectbox label {
+    font-size: 0.88rem !important;
+    font-weight: 600 !important;
+}
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] span,
+[data-testid="stSidebar"] div { font-size: 0.85rem; }
 
 .hist-card {
     display: flex;
@@ -125,16 +138,29 @@ st.markdown("""
     background: #f8f9fa;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
-    padding: 6px 8px;
-    margin-bottom: 4px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
 }
 .hist-card.alert { border-left: 4px solid #e94560; }
 .hist-card.ok    { border-left: 4px solid #28a745; }
-.hist-thumb { width: 48px; height: 36px; object-fit: cover; border-radius: 4px; flex-shrink:0; }
+.hist-thumb { width: 52px; height: 40px; object-fit: cover; border-radius: 4px; flex-shrink:0; }
 .hist-info  { flex: 1; min-width: 0; }
-.hist-name  { font-size: 0.72rem; font-weight: 600; color: #222; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hist-date  { font-size: 0.65rem; color: #888; }
-.hist-colab { font-size: 0.63rem; color: #0f3460; font-style: italic; }
+.hist-name  { font-size: 0.82rem; font-weight: 700; color: #222; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hist-date  { font-size: 0.74rem; color: #666; margin-top: 2px; }
+.hist-colab { font-size: 0.72rem; color: #0f3460; font-style: italic; margin-top: 1px; }
+
+/* Reduz altura da área de câmera e upload */
+[data-testid="stCameraInput"] video,
+[data-testid="stCameraInput"] img { max-height: 200px !important; }
+[data-testid="stCameraInputButton"] { padding: 6px 12px !important; font-size: 0.8rem !important; }
+section[data-testid="stFileUploadDropzone"] {
+    padding: 12px 16px !important;
+    min-height: 80px !important;
+}
+section[data-testid="stFileUploadDropzone"] > div {
+    font-size: 0.82rem !important;
+}
+[data-testid="stCameraInput"] { max-height: 220px; overflow: hidden; }
 
 .status-banner-ok {
     background: linear-gradient(90deg, #1a1a2e, #0f3460);
@@ -266,14 +292,9 @@ with st.sidebar:
 
     # ── Colaborador ──────────────────────────────────────────────────────────
     with st.expander("👷 Colaborador", expanded=True):
-        nome_colab = st.text_input("Nome completo", placeholder="Ex: João Silva",
-                                   key="nome_colab")
+        nome_colab  = st.text_input("Nome completo", placeholder="Ex: João Silva",
+                                    key="nome_colab")
         cargo_colab = st.selectbox("Cargo", CARGOS, key="cargo_colab")
-        modelo_label = st.selectbox("Modelo IA", list(MODELOS.keys()), key="modelo_sel")
-        conf_thresh  = st.slider("Sensibilidade (conf)", 0.05, 0.95, 0.15, 0.05,
-                                 help="0.15 = mais sensível | 0.40 = mais preciso")
-        iou_thresh   = st.slider("IoU (NMS)", 0.10, 0.95, 0.45, 0.05,
-                                 label_visibility="collapsed")
 
     # Exibe badge do colaborador ativo
     if nome_colab:
@@ -356,13 +377,11 @@ with st.sidebar:
 
 
 # ── Conteúdo principal ─────────────────────────────────────────────────────────
-model_path = MODELOS[modelo_label]
-if not Path(model_path).exists():
-    st.error(f"Modelo não encontrado: `{model_path}`. Execute o treino primeiro.")
+if not Path(MODEL_PATH).exists():
+    st.error(f"Modelo não encontrado: `{MODEL_PATH}`. Execute o treino primeiro.")
     st.stop()
 
-model = load_model(model_path)
-imgsz = 1280 if "1280" in modelo_label else 640
+model = load_model(MODEL_PATH)
 
 col_up, col_cam = st.columns(2)
 with col_up:
@@ -390,7 +409,7 @@ if img_source is not None:
     pil_img   = Image.open(img_source).convert("RGB")
     img_array = np.array(pil_img)
     with st.spinner("🔎 Analisando superfície..."):
-        annotated, detections = run_inference(model, img_array, conf_thresh, iou_thresh, imgsz)
+        annotated, detections = run_inference(model, img_array, CONF, IOU, IMGSZ)
     st.session_state.resultado = {
         "pil_orig": pil_img, "annotated": annotated,
         "detections": detections,
