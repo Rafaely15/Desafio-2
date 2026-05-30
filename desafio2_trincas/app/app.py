@@ -17,6 +17,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import streamlit as st
+import torch
 from PIL import Image
 from ultralytics import YOLO
 
@@ -25,7 +26,8 @@ from ultralytics import YOLO
 MODEL_PATH  = "models/best_v3_nano_1280.pt"
 CONF        = 0.15
 IOU         = 0.45
-IMGSZ       = 1280
+IMGSZ  = 640                                            # 640: ~10x mais rapido que 1280
+DEVICE = 0 if torch.cuda.is_available() else "cpu"     # GPU se disponivel, senao CPU
 
 CARGOS = ["Engenheiro(a)", "Mestre de Obras", "Técnico(a)", "Inspetor(a)", "Outro"]
 HISTORICO_FILE = Path("results/historico_inspecoes.json")
@@ -213,7 +215,7 @@ def pil_to_b64(img: Image.Image, size=(60, 44)) -> str:
 def run_inference(model, image, conf, iou, imgsz):
     results = model.predict(
         source=image, conf=conf, iou=iou,
-        imgsz=imgsz, device="cpu", verbose=False, retina_masks=True,
+        imgsz=imgsz, device=DEVICE, verbose=False, retina_masks=True,
     )[0]
     annotated_rgb = cv2.cvtColor(results.plot(line_width=3), cv2.COLOR_BGR2RGB)
     detections = []
