@@ -246,17 +246,22 @@ def save_historico(hist: list):
 
 def historico_to_csv(hist: list) -> bytes:
     buf = io.StringIO()
-    campos = ["data", "local", "colaborador", "cargo", "n_rachaduras", "observacao"]
+    campos = ["data", "local", "colaborador", "cargo",
+              "n_rachaduras_ia", "contagem_correta", "diferenca", "observacao"]
     writer = csv.DictWriter(buf, fieldnames=campos, extrasaction="ignore")
     writer.writeheader()
     for item in hist:
+        n_ia  = item.get("n_det", 0)
+        n_cor = item.get("contagem_correta", n_ia)
         writer.writerow({
-            "data":          item.get("data", ""),
-            "local":         item.get("local", ""),
-            "colaborador":   item.get("colaborador", ""),
-            "cargo":         item.get("cargo", ""),
-            "n_rachaduras":  item.get("n_det", 0),
-            "observacao":    item.get("obs", ""),
+            "data":             item.get("data", ""),
+            "local":            item.get("local", ""),
+            "colaborador":      item.get("colaborador", ""),
+            "cargo":            item.get("cargo", ""),
+            "n_rachaduras_ia":  n_ia,
+            "contagem_correta": n_cor,
+            "diferenca":        n_cor - n_ia,
+            "observacao":       item.get("obs", ""),
         })
     return buf.getvalue().encode("utf-8-sig")   # BOM para abrir direto no Excel
 
@@ -455,6 +460,19 @@ if res:
                            placeholder="Ex: Fissura estrutural, horizontal, ~30cm...")
         st.session_state.obs_texto = obs
 
+    # ── Contagem correta (validação humana) ────────────────────────────────
+    contagem_correta = st.number_input(
+        "✏️ Contagem correta de rachaduras",
+        min_value=0,
+        max_value=50,
+        value=res["n_det"],
+        step=1,
+        help=f"A IA detectou {res['n_det']}. Corrija se necessário antes de salvar.",
+        key="contagem_correta",
+    )
+    if contagem_correta != res["n_det"]:
+        st.caption(f"⚠️ Diferença: IA={res['n_det']}  |  Você={contagem_correta}")
+
     # ── Botões de ação ─────────────────────────────────────────────────────
     b1, b2, b3 = st.columns(3)
     with b1:
@@ -463,13 +481,14 @@ if res:
                 st.warning("⚠️ Informe o nome do colaborador antes de salvar.")
             else:
                 entry = {
-                    "local":       res["local"] or "Sem identificação",
-                    "data":        datetime.now().strftime("%d/%m/%Y %H:%M"),
-                    "colaborador": nome_colab,
-                    "cargo":       cargo_colab,
-                    "n_det":       res["n_det"],
-                    "obs":         st.session_state.obs_texto,
-                    "thumb":       pil_to_b64(res["pil_orig"]),
+                    "local":             res["local"] or "Sem identificação",
+                    "data":              datetime.now().strftime("%d/%m/%Y %H:%M"),
+                    "colaborador":       nome_colab,
+                    "cargo":             cargo_colab,
+                    "n_det":             res["n_det"],
+                    "contagem_correta":  contagem_correta,
+                    "obs":               st.session_state.obs_texto,
+                    "thumb":             pil_to_b64(res["pil_orig"]),
                 }
                 st.session_state.historico.append(entry)
                 save_historico(st.session_state.historico)
