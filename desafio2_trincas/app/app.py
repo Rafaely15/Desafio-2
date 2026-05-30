@@ -43,8 +43,9 @@ st.markdown("""
 <style>
 /* Limpo — não mexe no header nativo (hambúrguer funciona no mobile) */
 footer { visibility: hidden; }
-.block-container { padding-top: 0.5rem !important; }
+.block-container { padding-top: 4.5rem !important; }
 [data-testid="stSidebar"] > div:first-child { padding-top: 0rem; }
+
 
 .logo-box {
     background: #1a1a2e;
@@ -267,8 +268,8 @@ for key, val in [("historico", load_historico()), ("resultado", None),
 
 
 # ── Cabeçalho ──────────────────────────────────────────────────────────────────
-st.markdown("## 🏗️ Registro de Rachaduras e Fissuras")
-st.markdown("---")
+st.subheader("🏗️ Registro de Rachaduras e Fissuras")
+st.divider()
 
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
