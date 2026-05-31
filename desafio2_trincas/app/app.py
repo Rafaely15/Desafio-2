@@ -1,4 +1,4 @@
-"""
+﻿"""
 Inspetor de Qualidade - Deteccao de rachaduras e fissuras.
 
 Uso:
@@ -10,7 +10,6 @@ import csv
 import html
 import io
 import json
-import math
 import re
 import unicodedata
 from collections import OrderedDict
@@ -19,6 +18,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+import pandas as pd
 import streamlit as st
 import torch
 from PIL import Image
@@ -38,7 +38,7 @@ HISTORICO_FILE.parent.mkdir(exist_ok=True)
 
 st.set_page_config(
     page_title="Registro de Rachaduras e Fissuras",
-    page_icon="🏗️",
+    page_icon="ðŸ—ï¸",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -597,13 +597,13 @@ def render_header(subtitle: str):
         f"""
         <div class="app-top">
           <div class="brand">
-            <div class="brand-mark">🏗️</div>
+            <div class="brand-mark">ðŸ—ï¸</div>
             <div>
               <div class="brand-title">Registro de Rachaduras<br>e Fissuras</div>
               <div class="brand-sub">{esc(subtitle)}</div>
             </div>
           </div>
-          <div class="cloud-pill">☁</div>
+          <div class="cloud-pill">â˜</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -632,17 +632,17 @@ def hist_card(item: dict):
     thumb_html = (
         f'<img class="hist-thumb" src="data:image/jpeg;base64,{thumb}">'
         if thumb
-        else '<div class="hist-thumb" style="display:grid;place-items:center;">📷</div>'
+        else '<div class="hist-thumb" style="display:grid;place-items:center;">ðŸ“·</div>'
     )
     count = item.get("contagem_correta", item.get("n_det", 0))
-    mark = "!" if alerta else "✓"
+    mark = "!" if alerta else "âœ“"
     st.markdown(
         f"""
         <div class="hist-card{cls}">
           {thumb_html}
           <div style="min-width:0; flex:1;">
             <div class="hist-title">{esc(item.get("local", "Sem local"))}</div>
-            <div class="hist-meta">{esc(item.get("data", ""))} · {esc(count)} rachadura(s)</div>
+            <div class="hist-meta">{esc(item.get("data", ""))} Â· {esc(count)} rachadura(s)</div>
             <div class="hist-person">{esc(item.get("colaborador", ""))}</div>
           </div>
           <div class="alert-mark">{mark}</div>
@@ -663,22 +663,22 @@ def show_history_list(hist: list, manage: bool = False):
         if manage:
             with col_action:
                 if st.session_state.del_confirm == idx:
-                    if st.button("✓", key=f"ok_{idx}", help="Confirmar"):
+                    if st.button("âœ“", key=f"ok_{idx}", help="Confirmar"):
                         st.session_state.historico.pop(idx)
                         save_historico(st.session_state.historico)
                         st.session_state.del_confirm = -1
                         st.rerun()
-                    if st.button("×", key=f"no_{idx}", help="Cancelar"):
+                    if st.button("Ã—", key=f"no_{idx}", help="Cancelar"):
                         st.session_state.del_confirm = -1
                         st.rerun()
-                elif st.button("🗑", key=f"del_{idx}", help="Excluir"):
+                elif st.button("ðŸ—‘", key=f"del_{idx}", help="Excluir"):
                     st.session_state.del_confirm = idx
                     st.rerun()
 
 
 def page_inspecao():
     render_header("Inspetor de Qualidade - Engenharia Civil")
-    section("Colaborador", "👷")
+    section("Colaborador", "ðŸ‘·")
 
     col_nome, col_cargo = st.columns([1.45, 1])
     with col_nome:
@@ -708,17 +708,17 @@ def page_inspecao():
             unsafe_allow_html=True,
         )
 
-    section("Envio de imagem", "📁")
+    section("Envio de imagem", "ðŸ“")
     uploaded = st.file_uploader(
         "Upload de arquivos",
         type=["jpg", "jpeg", "png", "bmp", "webp"],
         help="JPG, PNG, BMP ou WEBP ate 200MB.",
     )
 
-    section("Captura em campo", "📷")
+    section("Captura em campo", "ðŸ“·")
     camera_img = st.camera_input("Abrir camera", label_visibility="collapsed")
 
-    section("Informacoes da inspecao", "📍")
+    section("Informacoes da inspecao", "ðŸ“")
     local_obra = st.text_input(
         "Local da inspecao",
         value=st.session_state.local_input,
@@ -766,7 +766,7 @@ def page_resultado():
     res = st.session_state.resultado
     if not res:
         st.markdown('<div class="help-empty">Nenhuma inspecao analisada ainda.</div>', unsafe_allow_html=True)
-        if st.button("Iniciar coleta", type="primary", use_container_width=True):
+        if st.button("Iniciar coleta", type="primary", width="stretch"):
             st.session_state.page = "Inicio"
             st.rerun()
         return
@@ -776,7 +776,7 @@ def page_resultado():
     st.markdown(
         f"""
         <div class="status-card {'ok' if not alerta else ''}">
-          <div class="status-icon">✓</div>
+          <div class="status-icon">âœ“</div>
           <div>
             <div class="status-title">Inspecao concluida</div>
             <div class="status-sub">{n_det} rachadura(s) detectada(s)</div>
@@ -786,14 +786,14 @@ def page_resultado():
         unsafe_allow_html=True,
     )
 
-    section("Imagem original", "🖼")
+    section("Imagem original", "ðŸ–¼")
     st.markdown('<div class="image-frame">', unsafe_allow_html=True)
-    st.image(res["pil_orig"], use_container_width=True)
+    st.image(res["pil_orig"], width="stretch")
     st.markdown("</div>", unsafe_allow_html=True)
 
     section("Deteccao por IA", "IA")
     st.markdown('<div class="image-frame">', unsafe_allow_html=True)
-    st.image(res["annotated"], use_container_width=True)
+    st.image(res["annotated"], width="stretch")
     st.markdown("</div>", unsafe_allow_html=True)
 
     confidence = 0
@@ -826,7 +826,7 @@ def page_resultado():
 
     b1, b2 = st.columns(2)
     with b1:
-        if st.button("Salvar resultado", type="primary", use_container_width=True):
+        if st.button("Salvar resultado", type="primary", width="stretch"):
             nome_colab = res.get("nome_colab") or st.session_state.get("nome_colab", "")
             if not nome_colab:
                 st.warning("Informe o nome do colaborador antes de salvar.")
@@ -845,7 +845,7 @@ def page_resultado():
                 save_historico(st.session_state.historico)
                 st.success("Registro salvo no diario de obra.")
     with b2:
-        if st.button("Adicionar observacao", use_container_width=True):
+        if st.button("Adicionar observacao", width="stretch"):
             st.session_state.show_obs = not st.session_state.show_obs
             st.rerun()
 
@@ -856,10 +856,10 @@ def page_resultado():
             data=image_to_download(res["annotated"]),
             file_name=f"inspecao_{res['source_name'] or 'resultado'}.jpg",
             mime="image/jpeg",
-            use_container_width=True,
+            width="stretch",
         )
     with d2:
-        if st.button("Nova inspecao", use_container_width=True):
+        if st.button("Nova inspecao", width="stretch"):
             st.session_state.resultado = None
             st.session_state.obs_texto = ""
             st.session_state.local_input = ""
@@ -879,7 +879,7 @@ def page_historico():
             (str(s["dias"]), "Dias"),
         ]
     )
-    section("Diario de obra", "📋")
+    section("Diario de obra", "ðŸ“‹")
     show_history_list(hist, manage=True)
 
     if hist:
@@ -890,10 +890,10 @@ def page_historico():
                 data=historico_to_csv(hist),
                 file_name=f"diario_obra_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
-                use_container_width=True,
+                width="stretch",
             )
         with c2:
-            if st.button("Limpar tudo", use_container_width=True):
+            if st.button("Limpar tudo", width="stretch"):
                 st.session_state.historico = []
                 save_historico([])
                 st.rerun()
@@ -929,9 +929,9 @@ def page_dashboard():
                 "rachaduras": sum(int(i.get("contagem_correta", i.get("n_det", 0)) or 0) for i in itens),
             }
         )
-    st.bar_chart(chart_rows, x="dia", y=["inspecoes", "rachaduras"], use_container_width=True)
+    st.bar_chart(pd.DataFrame(chart_rows), x="dia", y=["inspecoes", "rachaduras"], width="stretch")
 
-    section("Registros do periodo", "📆")
+    section("Registros do periodo", "ðŸ“†")
     show_history_list(hist_filtrado, manage=False)
 
     safe_day = re.sub(r"[^0-9A-Za-z_-]+", "_", normalize_text(selected_day).strip("_")) or "todos"
@@ -943,7 +943,7 @@ def page_dashboard():
             file_name=f"relatorio_inspecoes_{safe_day}.pdf",
             mime="application/pdf",
             type="primary",
-            use_container_width=True,
+            width="stretch",
         )
     with c2:
         st.download_button(
@@ -951,7 +951,7 @@ def page_dashboard():
             data=historico_to_csv(hist_filtrado),
             file_name=f"relatorio_inspecoes_{safe_day}.csv",
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
         )
 
 
@@ -969,10 +969,10 @@ for key, val in [
 
 
 with st.sidebar:
-    st.markdown("### 🏗️ Residencia IA")
+    st.markdown("### ðŸ—ï¸ Residencia IA")
     st.caption("Inspetor de Qualidade - Engenharia Civil")
     st.divider()
-    st.markdown("#### Ultimas inspeções")
+    st.markdown("#### Ultimas inspeÃ§Ãµes")
     show_history_list(st.session_state.historico[-5:], manage=False)
 
 
@@ -1003,3 +1003,4 @@ st.markdown("</div>", unsafe_allow_html=True)
 if selected_page != st.session_state.page:
     st.session_state.page = selected_page
     st.rerun()
+
