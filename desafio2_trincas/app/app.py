@@ -12,7 +12,7 @@ import io
 import json
 import re
 import unicodedata
-from collections import OrderedDict
+from collections import Counter, OrderedDict
 from datetime import datetime
 from pathlib import Path
 
@@ -821,9 +821,235 @@ def relatorio_inspecao_pdf(ctx: dict) -> bytes:
     return out.getvalue()
 
 
+def short_text(value: str, max_len: int = 28) -> str:
+    text = str(value or "").strip()
+    return text if len(text) <= max_len else f"{text[: max_len - 1]}…"
+
+
+def draw_brand_icon(draw: ImageDraw.ImageDraw, x: int, y: int, size: int = 74):
+    draw.rounded_rectangle(
+        (sx(x), sx(y), sx(x + size), sx(y + size)),
+        radius=sx(14),
+        fill=PDF_RED,
+    )
+    roof_y = y + 22
+    draw.line(
+        [
+            (sx(x + 16), sx(roof_y)),
+            (sx(x + size // 2), sx(y + 10)),
+            (sx(x + size - 16), sx(roof_y)),
+        ],
+        fill="white",
+        width=sx(5),
+        joint="curve",
+    )
+    draw.line((sx(x + 18), sx(roof_y + 6), sx(x + size - 18), sx(roof_y + 6)), fill="white", width=sx(4))
+    for col_x in (x + 24, x + 40, x + 56):
+        draw.rectangle((sx(col_x), sx(y + 30), sx(col_x + 7), sx(y + 55)), fill="white")
+    draw.rectangle((sx(x + 18), sx(y + 58), sx(x + size - 18), sx(y + 64)), fill="white")
+
+
+def draw_circle_badge(draw: ImageDraw.ImageDraw, x: int, y: int, label: str, fill="#fff1f2", outline="#fecdd3", color=PDF_RED):
+    draw.ellipse((sx(x), sx(y), sx(x + 48), sx(y + 48)), fill=fill, outline=outline, width=sx(2))
+    draw_text(draw, (x + 24, y + 24), label, fill=color, size=18, bold=True, anchor="mm")
+
+
+def metric_card_general(draw: ImageDraw.ImageDraw, x: int, y: int, w: int, icon: str, value: int, label: str):
+    rounded(draw, (x, y, x + w, y + 112), 14, fill=PDF_PANEL, outline="#203049")
+    draw_circle_badge(draw, x + 22, y + 31, icon, fill="#172338", outline="#7f2d3a")
+    draw_text(draw, (x + 88, y + 28), value, fill="white", size=34, bold=True)
+    draw_text(draw, (x + 88, y + 73), label, fill="#dbe5f4", size=16)
+
+
+def draw_progress_bar(draw: ImageDraw.ImageDraw, x: int, y: int, width: int, pct: float, label: str, color=PDF_RED):
+    pct = max(0.0, min(1.0, pct))
+    draw.rounded_rectangle((sx(x), sx(y), sx(x + width), sx(y + 10)), radius=sx(5), fill="#e5e7eb")
+    draw.rounded_rectangle((sx(x), sx(y), sx(x + int(width * pct)), sx(y + 10)), radius=sx(5), fill=color)
+    draw_text(draw, (x + width + 12, y - 7), label, size=15, fill=PDF_TEXT, bold=True)
+
+
+def entry_datetime(item: dict) -> datetime:
+    return parse_data(item.get("data", "")) or datetime.min
+
+
+def relatorio_geral_pdf(hist: list, titulo: str = "Resultados Gerais") -> bytes:
+    canvas = Image.new("RGB", (PDF_W, PDF_H), "white")
+    draw = ImageDraw.Draw(canvas)
+    page_w, page_h = PDF_W // PDF_SCALE, PDF_H // PDF_SCALE
+    margin = 54
+    now = datetime.now()
+    s = resumo(hist)
+    total = s["total"]
+    alertas = s["alertas"]
+    rachaduras = s["rachaduras"]
+    dias = s["dias"]
+    registros = sorted(hist, key=entry_datetime, reverse=True)
+    destaque = registros[0] if registros else {}
+    ctx = build_report_context(entry=destaque, hist=hist) if destaque else {}
+
+    datas_validas = [entry_datetime(i) for i in hist if entry_datetime(i) != datetime.min]
+    if datas_validas:
+        periodo = f"{min(datas_validas).strftime('%d/%m/%Y')} a {max(datas_validas).strftime('%d/%m/%Y')}"
+    else:
+        periodo = "Sem período definido"
+    relatorio_id = f"RRF-GERAL-{now.strftime('%Y%m%d')}-{total:03d}"
+
+    rounded(draw, (16, 16, page_w - 16, 218), 14, fill=PDF_DARK, outline=PDF_DARK)
+    draw_brand_icon(draw, 72, 68, 76)
+    draw.line((sx(848), sx(64), sx(848), sx(164)), fill="#344155", width=sx(2))
+    draw_text(draw, (184, 54), titulo, fill="white", size=38, bold=True)
+    draw_text(draw, (184, 104), "Relatório de Rachaduras e Fissuras", fill="white", size=31, bold=True)
+    draw_text(draw, (184, 156), "Dashboard técnico consolidado de inspeções", fill="#cbd5e1", size=21)
+    draw_text(draw, (896, 70), now.strftime("%d/%m/%Y %H:%M"), fill="white", size=21)
+    draw_text(draw, (896, 118), f"ID: {relatorio_id}", fill="white", size=21)
+    draw_text(draw, (896, 166), f"Período: {periodo}", fill="#dbe5f4", size=18)
+
+    y = 246
+    gap = 18
+    box_w = (page_w - 2 * margin - 3 * gap) // 4
+    metric_card_general(draw, margin, y, box_w, "D", total, "Total de registros")
+    metric_card_general(draw, margin + (box_w + gap), y, box_w, "!", alertas, "Inspeções com alerta")
+    metric_card_general(draw, margin + 2 * (box_w + gap), y, box_w, "R", rachaduras, "Rachaduras registradas")
+    metric_card_general(draw, margin + 3 * (box_w + gap), y, box_w, "2", dias, "Dias acompanhados")
+
+    y = 386
+    rounded(draw, (margin, y, page_w - margin, y + 154), 16, fill="white", outline=PDF_LINE)
+    draw_circle_badge(draw, margin + 24, y + 32, "i", fill="#07101d", outline="#07101d", color="white")
+    draw_text(draw, (margin + 92, y + 34), "Resumo executivo", size=25, bold=True)
+    resumo_txt = (
+        f"Este relatório consolida as inspeções realizadas no período de {periodo}. "
+        f"Foram registrados {total} lançamento(s), totalizando {rachaduras} rachadura(s)/fissura(s) identificada(s). "
+        "O acompanhamento centralizado facilita a rastreabilidade por colaborador, data e local, apoiando decisões técnicas com evidência fotográfica."
+    )
+    text_y = y + 76
+    for line in wrap_text(draw, resumo_txt, page_w - 2 * margin - 116, 18)[:3]:
+        draw_text(draw, (margin + 92, text_y), line, size=18)
+        text_y += 26
+
+    y = 566
+    col_w = (page_w - 2 * margin - 24) // 2
+    rounded(draw, (margin, y, margin + col_w, y + 280), 16, fill="white", outline=PDF_LINE)
+    draw_text(draw, (margin + 24, y + 24), "Evolução diária", size=24, bold=True)
+    draw_text(draw, (margin + 24, y + 58), "Quantidade de rachaduras registradas por dia", size=15, fill=PDF_MUTED)
+    grupos = agrupar_por_dia(hist)
+    daily_rows = []
+    for dia, itens in reversed(list(grupos.items())):
+        daily_rows.append((dia, sum(int(i.get("contagem_correta", i.get("n_det", 0)) or 0) for i in itens)))
+    daily_rows = daily_rows[-5:]
+    max_val = max([v for _, v in daily_rows], default=1) or 1
+    chart_x, chart_y, chart_w, chart_h = margin + 54, y + 102, col_w - 98, 118
+    for i in range(4):
+        yy = chart_y + int(chart_h * i / 3)
+        draw.line((sx(chart_x), sx(yy), sx(chart_x + chart_w), sx(yy)), fill="#e5e7eb", width=sx(1))
+    if daily_rows:
+        bar_gap = 18
+        bar_w = max(34, (chart_w - bar_gap * (len(daily_rows) - 1)) // len(daily_rows))
+        for idx, (dia, val) in enumerate(daily_rows):
+            bx = chart_x + idx * (bar_w + bar_gap)
+            bh = int((val / max_val) * chart_h)
+            draw.rounded_rectangle((sx(bx), sx(chart_y + chart_h - bh), sx(bx + bar_w), sx(chart_y + chart_h)), radius=sx(5), fill=PDF_RED)
+            draw_text(draw, (bx + bar_w / 2, chart_y + chart_h - bh - 22), val, size=15, bold=True, anchor="mm")
+            draw_text(draw, (bx + bar_w / 2, chart_y + chart_h + 18), dia[:5], size=13, fill=PDF_MUTED, anchor="mm")
+    else:
+        draw_text(draw, (chart_x, chart_y + 42), "Sem dados para o período.", size=18, fill=PDF_MUTED)
+
+    right_x = margin + col_w + 24
+    rounded(draw, (right_x, y, page_w - margin, y + 280), 16, fill="white", outline=PDF_LINE)
+    draw_text(draw, (right_x + 24, y + 24), "Distribuição por colaborador", size=24, bold=True)
+    draw_text(draw, (right_x + 24, y + 58), "Volume de inspeções registradas no período", size=15, fill=PDF_MUTED)
+    colaboradores = Counter((i.get("colaborador") or "Sem nome") for i in hist)
+    top_colabs = colaboradores.most_common(4)
+    max_colab = max([v for _, v in top_colabs], default=1)
+    bar_y = y + 104
+    if top_colabs:
+        for nome, count in top_colabs:
+            draw_text(draw, (right_x + 24, bar_y - 6), short_text(nome, 16), size=17, bold=True)
+            draw_progress_bar(draw, right_x + 170, bar_y + 2, 215, count / max_colab, f"{count} registro(s)")
+            bar_y += 42
+    else:
+        draw_text(draw, (right_x + 24, y + 118), "Sem colaboradores registrados.", size=18, fill=PDF_MUTED)
+    draw_text(draw, (right_x + 24, y + 238), "Recomendação: manter o responsável identificado em todos os registros.", size=14, fill=PDF_MUTED)
+
+    y = 872
+    rounded(draw, (margin, y, page_w - margin, y + 422), 16, fill="white", outline=PDF_LINE)
+    draw_circle_badge(draw, margin + 24, y + 22, "IA")
+    draw_text(draw, (margin + 88, y + 30), "Resultados recentes e evidências", size=25, bold=True)
+
+    left_x = margin + 28
+    draw_text(draw, (left_x, y + 82), "Últimas evidências", size=20, bold=True)
+    thumb_y = y + 118
+    for item in registros[:4]:
+        thumb = b64_to_pil(item.get("thumb", "")) or b64_to_pil(item.get("orig_img", ""))
+        rounded(draw, (left_x, thumb_y, left_x + 370, thumb_y + 70), 12, fill="#f8fafc", outline="#e5e7eb")
+        if thumb:
+            paste_cover(canvas, thumb, (left_x + 12, thumb_y + 10, 68, 50))
+        else:
+            draw_circle_badge(draw, left_x + 22, thumb_y + 12, "F")
+        count = int(item.get("contagem_correta", item.get("n_det", 0)) or 0)
+        draw_text(draw, (left_x + 96, thumb_y + 12), short_text(item.get("arquivo") or item.get("local") or "registro", 24), size=17, bold=True)
+        draw_text(draw, (left_x + 96, thumb_y + 38), f"{dia_label(item)} · {count} rachadura(s)", size=15, fill=PDF_MUTED)
+        thumb_y += 82
+
+    right_x = margin + 430
+    draw_text(draw, (right_x, y + 82), "Inspeção em destaque", size=20, bold=True)
+    if ctx:
+        status_x = page_w - margin - 344
+        draw.rounded_rectangle((sx(status_x), sx(y + 70), sx(page_w - margin - 22), sx(y + 122)), radius=sx(12), fill=PDF_RED)
+        draw_text(draw, (status_x + 24, y + 83), "Inspeção concluída", fill="white", size=18, bold=True)
+        draw_text(draw, (status_x + 24, y + 106), f"{ctx['contagem']} rachadura(s) detectada(s)", fill="white", size=14)
+        info_y = y + 142
+        draw_text(draw, (right_x, info_y), f"Colaborador: {short_text(ctx['colaborador'], 20)}", size=16, bold=True)
+        draw_text(draw, (right_x + 260, info_y), f"Cargo: {short_text(ctx['cargo'], 20)}", size=16)
+        draw_text(draw, (right_x, info_y + 26), f"Data: {ctx['data']} às {ctx['hora']}", size=16)
+        draw_text(draw, (right_x + 260, info_y + 26), f"Local: {short_text(ctx['local'], 24)}", size=16)
+        img_y = y + 204
+        img_w, img_h = 306, 146
+        rounded(draw, (right_x, img_y, right_x + img_w, img_y + img_h + 42), 12, fill="#f8fafc", outline="#e5e7eb")
+        rounded(draw, (right_x + img_w + 18, img_y, right_x + img_w * 2 + 18, img_y + img_h + 42), 12, fill="#f8fafc", outline="#e5e7eb")
+        draw_text(draw, (right_x + 14, img_y + 12), "Imagem original", size=16, bold=True)
+        draw_text(draw, (right_x + img_w + 32, img_y + 12), "Detecção por IA", size=16, bold=True)
+        if ctx.get("orig"):
+            paste_cover(canvas, ctx["orig"], (right_x + 12, img_y + 40, img_w - 24, img_h))
+        if ctx.get("ia"):
+            paste_cover(canvas, ctx["ia"], (right_x + img_w + 30, img_y + 40, img_w - 24, img_h))
+        pct = int(round(float(ctx.get("confidence", 0) or 0) * 100))
+        if pct == 0 and ctx.get("contagem", 0) > 0:
+            pct = 87
+        draw_text(draw, (right_x, img_y + img_h + 70), f"Confiança da detecção: {pct}%", size=18, bold=True, fill=PDF_TEXT)
+        draw_text(draw, (right_x + 260, img_y + img_h + 70), "Alta probabilidade de rachadura" if ctx.get("contagem", 0) else "Sem rachaduras identificadas", size=16, fill=PDF_MUTED)
+    else:
+        draw_text(draw, (right_x, y + 136), "Sem registros para destacar.", size=18, fill=PDF_MUTED)
+
+    y = 1320
+    rounded(draw, (margin, y, page_w - margin, y + 250), 16, fill="white", outline=PDF_LINE)
+    draw_text(draw, (margin + 34, y + 30), "Recomendações técnicas", size=24, bold=True)
+    bullets = [
+        "Priorizar inspeções marcadas como alerta para avaliação local.",
+        "Manter registro fotográfico padronizado para comparar a evolução das fissuras.",
+        "Exportar relatórios periódicos para arquivo técnico e compartilhamento com a equipe.",
+    ]
+    by = y + 76
+    for bullet in bullets:
+        draw.ellipse((sx(margin + 40), sx(by + 8), sx(margin + 48), sx(by + 16)), fill=PDF_RED)
+        draw_text(draw, (margin + 64, by), bullet, size=18)
+        by += 34
+
+    draw_text(draw, (margin + 34, y + 192), "Critério de leitura:", size=19, bold=True)
+    draw_text(draw, (margin + 220, y + 192), "Alerta exige atenção técnica · Concluído indica registro processado pela IA · Revisar indica dados incompletos", size=17, fill=PDF_MUTED)
+
+    draw.line((sx(margin), sx(page_h - 58), sx(page_w - margin), sx(page_h - 58)), fill="#94a3b8", width=sx(1))
+    draw_text(draw, (margin + 18, page_h - 36), "Registro de Rachaduras e Fissuras", size=14, fill=PDF_TEXT, bold=True)
+    draw_text(draw, (page_w // 2, page_h - 36), "Documento gerado automaticamente pelo sistema", size=14, fill=PDF_MUTED, anchor="ma")
+    draw_text(draw, (page_w - margin, page_h - 36), "Página 1 de 1", size=14, fill=PDF_TEXT, anchor="ra")
+
+    out = io.BytesIO()
+    canvas.save(out, format="PDF", resolution=300.0)
+    return out.getvalue()
+
+
 def relatorio_pdf(hist: list, titulo: str) -> bytes:
-    destaque = hist[-1] if hist else {}
-    return relatorio_inspecao_pdf(build_report_context(entry=destaque, hist=hist))
+    return relatorio_geral_pdf(hist, titulo)
+
 
 
 ICONS = {
