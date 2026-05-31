@@ -957,8 +957,14 @@ def relatorio_geral_pdf(hist: list, titulo: str = "Resultados Gerais") -> bytes:
     rounded(draw, (right_x, y, page_w - margin, y + 280), 16, fill="white", outline=PDF_LINE)
     draw_text(draw, (right_x + 24, y + 24), "Distribuição por colaborador", size=24, bold=True)
     draw_text(draw, (right_x + 24, y + 58), "Volume de inspeções registradas no período", size=15, fill=PDF_MUTED)
-    colaboradores = Counter((i.get("colaborador") or "Sem nome") for i in hist)
-    top_colabs = colaboradores.most_common(4)
+    colaboradores = Counter()
+    nomes_colab = {}
+    for item in hist:
+        nome_raw = str(item.get("colaborador") or "Sem nome").strip() or "Sem nome"
+        chave = nome_raw.casefold()
+        nomes_colab.setdefault(chave, nome_raw)
+        colaboradores[chave] += 1
+    top_colabs = [(nomes_colab[chave], count) for chave, count in colaboradores.most_common(4)]
     max_colab = max([v for _, v in top_colabs], default=1)
     bar_y = y + 104
     if top_colabs:
@@ -971,14 +977,14 @@ def relatorio_geral_pdf(hist: list, titulo: str = "Resultados Gerais") -> bytes:
     draw_text(draw, (right_x + 24, y + 238), "Recomendação: manter o responsável identificado em todos os registros.", size=14, fill=PDF_MUTED)
 
     y = 872
-    rounded(draw, (margin, y, page_w - margin, y + 422), 16, fill="white", outline=PDF_LINE)
+    rounded(draw, (margin, y, page_w - margin, y + 455), 16, fill="white", outline=PDF_LINE)
     draw_circle_badge(draw, margin + 24, y + 22, "IA")
     draw_text(draw, (margin + 88, y + 30), "Resultados recentes e evidências", size=25, bold=True)
 
     left_x = margin + 28
     draw_text(draw, (left_x, y + 82), "Últimas evidências", size=20, bold=True)
     thumb_y = y + 118
-    for item in registros[:4]:
+    for item in registros[:3]:
         thumb = b64_to_pil(item.get("thumb", "")) or b64_to_pil(item.get("orig_img", ""))
         rounded(draw, (left_x, thumb_y, left_x + 370, thumb_y + 70), 12, fill="#f8fafc", outline="#e5e7eb")
         if thumb:
@@ -1015,13 +1021,14 @@ def relatorio_geral_pdf(hist: list, titulo: str = "Resultados Gerais") -> bytes:
         pct = int(round(float(ctx.get("confidence", 0) or 0) * 100))
         if pct == 0 and ctx.get("contagem", 0) > 0:
             pct = 87
-        draw_text(draw, (right_x, img_y + img_h + 70), f"Confiança da detecção: {pct}%", size=18, bold=True, fill=PDF_TEXT)
-        draw_text(draw, (right_x + 260, img_y + img_h + 70), "Alta probabilidade de rachadura" if ctx.get("contagem", 0) else "Sem rachaduras identificadas", size=16, fill=PDF_MUTED)
+        conf_y = img_y + img_h + 50
+        draw_text(draw, (right_x, conf_y), f"Confiança da detecção: {pct}%", size=18, bold=True, fill=PDF_TEXT)
+        draw_text(draw, (right_x + 260, conf_y), "Alta probabilidade de rachadura" if ctx.get("contagem", 0) else "Sem rachaduras identificadas", size=16, fill=PDF_MUTED)
     else:
         draw_text(draw, (right_x, y + 136), "Sem registros para destacar.", size=18, fill=PDF_MUTED)
 
-    y = 1320
-    rounded(draw, (margin, y, page_w - margin, y + 250), 16, fill="white", outline=PDF_LINE)
+    y = 1350
+    rounded(draw, (margin, y, page_w - margin, y + 230), 16, fill="white", outline=PDF_LINE)
     draw_text(draw, (margin + 34, y + 30), "Recomendações técnicas", size=24, bold=True)
     bullets = [
         "Priorizar inspeções marcadas como alerta para avaliação local.",
