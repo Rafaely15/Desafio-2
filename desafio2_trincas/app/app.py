@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import torch
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 from ultralytics import YOLO
 
 
@@ -76,8 +76,8 @@ html, body, [data-testid="stAppViewContainer"] {
 }
 footer { visibility: hidden; }
 .block-container {
-    max-width: 520px;
-    padding: .7rem .75rem 6.2rem !important;
+    max-width: 980px;
+    padding: 1.5rem 2.2rem 6.8rem !important;
 }
 
 section[data-testid="stSidebar"] {
@@ -89,7 +89,7 @@ h1, h2, h3, h4, p, label, span, div { color: inherit; }
 h1, h2, h3 { letter-spacing: -.02em; }
 
 .app-shell {
-    max-width: 430px;
+    max-width: 760px;
     margin: 0 auto;
     border: 1px solid rgba(255,255,255,.10);
     border-radius: 34px;
@@ -97,7 +97,7 @@ h1, h2, h3 { letter-spacing: -.02em; }
         linear-gradient(180deg, rgba(9, 19, 34, .96), rgba(3, 8, 18, .98)),
         radial-gradient(circle at 60% 0%, rgba(41, 92, 169, .20), transparent 22rem);
     box-shadow: 0 26px 80px rgba(0,0,0,.42);
-    padding: 1.05rem;
+    padding: 1.55rem 1.75rem;
 }
 
 .app-top {
@@ -273,14 +273,14 @@ h1, h2, h3 { letter-spacing: -.02em; }
     border: 1px solid var(--stroke);
     border-left: 4px solid var(--red);
     border-radius: 12px;
-    padding: .72rem;
-    margin-bottom: .62rem;
+    padding: .86rem .95rem;
+    margin-bottom: .72rem;
     background: linear-gradient(180deg, rgba(20,31,49,.96), rgba(12,21,36,.95));
 }
 .hist-card.ok { border-left-color: var(--green); }
 .hist-thumb {
-    width: 64px;
-    height: 54px;
+    width: 76px;
+    height: 58px;
     object-fit: cover;
     border-radius: 9px;
     border: 1px solid rgba(255,255,255,.12);
@@ -288,13 +288,13 @@ h1, h2, h3 { letter-spacing: -.02em; }
 }
 .hist-title {
     font-weight: 850;
-    font-size: .94rem;
+    font-size: 1rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.hist-meta { color: var(--muted); font-size: .8rem; margin-top: .16rem; }
-.hist-person { color: #93c5fd; font-size: .82rem; font-style: italic; margin-top: .18rem; }
+.hist-meta { color: var(--muted); font-size: .86rem; margin-top: .18rem; }
+.hist-person { color: #93c5fd; font-size: .86rem; font-style: italic; margin-top: .2rem; }
 .alert-mark { color: var(--red); font-size: 1.35rem; margin-left: auto; font-weight: 900; }
 
 .image-frame img {
@@ -315,7 +315,7 @@ h1, h2, h3 { letter-spacing: -.02em; }
     left: 50%;
     bottom: 16px;
     transform: translateX(-50%);
-    width: min(460px, calc(100vw - 26px));
+    width: min(760px, calc(100vw - 64px));
     z-index: 999;
     border: 1px solid rgba(255,255,255,.10);
     border-radius: 24px;
@@ -384,8 +384,29 @@ div[role="radiogroup"] label:has(input:checked) {
 }
 
 @media (max-width: 640px) {
-    .block-container { padding-left: .7rem !important; padding-right: .7rem !important; }
-    .app-shell { border-radius: 24px; padding: .85rem; }
+    .block-container {
+        max-width: 520px;
+        padding: .7rem .75rem 6.2rem !important;
+    }
+    .app-shell {
+        max-width: 430px;
+        border-radius: 24px;
+        padding: .85rem;
+    }
+    .bottom-nav {
+        width: min(460px, calc(100vw - 26px));
+    }
+    .hist-card {
+        padding: .72rem;
+        margin-bottom: .62rem;
+    }
+    .hist-thumb {
+        width: 64px;
+        height: 54px;
+    }
+    .hist-title { font-size: .94rem; }
+    .hist-meta { font-size: .8rem; }
+    .hist-person { font-size: .82rem; }
     .metric-row { grid-template-columns: 1fr; }
 }
 </style>
@@ -429,6 +450,23 @@ def pil_to_b64(img: Image.Image, size=(80, 60)) -> str:
     buf = io.BytesIO()
     img_s.save(buf, format="JPEG", quality=72)
     return base64.b64encode(buf.getvalue()).decode()
+
+
+def pil_to_report_b64(img: Image.Image, size=(900, 650)) -> str:
+    img_s = img.copy().convert("RGB")
+    img_s.thumbnail(size)
+    buf = io.BytesIO()
+    img_s.save(buf, format="JPEG", quality=86)
+    return base64.b64encode(buf.getvalue()).decode()
+
+
+def b64_to_pil(value: str) -> Image.Image | None:
+    if not value:
+        return None
+    try:
+        return Image.open(io.BytesIO(base64.b64decode(value))).convert("RGB")
+    except Exception:
+        return None
 
 
 def image_to_download(img_array) -> bytes:
@@ -534,82 +572,228 @@ def pdf_escape(text: str) -> str:
     return normalize_text(text).replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
 
 
-def simple_pdf(lines: list[str], title: str = "Relatorio de Inspecoes") -> bytes:
-    width, height = 595, 842
-    margin = 48
-    line_h = 15
-    pages = []
-    current = []
-    for line in lines:
-        if len(current) >= 47:
-            pages.append(current)
-            current = []
-        current.append(line)
-    pages.append(current or ["Sem registros."])
+PDF_SCALE = 2
+PDF_W, PDF_H = 1240 * PDF_SCALE, 1754 * PDF_SCALE
+PDF_DARK = "#07101d"
+PDF_PANEL = "#0d1828"
+PDF_RED = "#ef4454"
+PDF_TEXT = "#111827"
+PDF_MUTED = "#475569"
+PDF_LINE = "#d7dde7"
 
-    objects = []
-    font_obj_id = 3 + len(pages) * 2
-    kids = []
-    next_id = 3
 
-    for page_lines in pages:
-        page_id = next_id
-        content_id = next_id + 1
-        next_id += 2
-        kids.append(page_id)
-        ops = ["BT", "/F1 16 Tf", f"{margin} {height - margin} Td", f"({pdf_escape(title)}) Tj"]
-        ops += ["/F1 10 Tf", f"0 -{line_h * 1.8} Td"]
-        for line in page_lines:
-            clean = pdf_escape(line[:100])
-            ops.append(f"({clean}) Tj")
-            ops.append(f"0 -{line_h} Td")
-        ops.append("ET")
-        stream = "\n".join(ops).encode("latin-1", errors="replace")
-        objects.append((page_id, f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {width} {height}] /Resources << /Font << /F1 {font_obj_id} 0 R >> >> /Contents {content_id} 0 R >>".encode()))
-        objects.append((content_id, b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + stream + b"\nendstream"))
+def sx(value: int | float) -> int:
+    return int(round(value * PDF_SCALE))
 
-    pages_obj = f"<< /Type /Pages /Kids [{' '.join(f'{kid} 0 R' for kid in kids)}] /Count {len(kids)} >>".encode()
-    font_obj = b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"
-    all_objects = [(1, b"<< /Type /Catalog /Pages 2 0 R >>"), (2, pages_obj), *objects, (font_obj_id, font_obj)]
+
+def font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    candidates = [
+        "C:/Windows/Fonts/arialbd.ttf" if bold else "C:/Windows/Fonts/arial.ttf",
+        "C:/Windows/Fonts/segoeuib.ttf" if bold else "C:/Windows/Fonts/segoeui.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    ]
+    for path in candidates:
+        try:
+            return ImageFont.truetype(path, sx(size))
+        except Exception:
+            continue
+    return ImageFont.load_default()
+
+
+def draw_text(draw: ImageDraw.ImageDraw, xy, text, fill=PDF_TEXT, size=24, bold=False, anchor=None):
+    draw.text((sx(xy[0]), sx(xy[1])), normalize_text(text), fill=fill, font=font(size, bold), anchor=anchor)
+
+
+def wrap_text(draw: ImageDraw.ImageDraw, text: str, width: int, size: int, bold: bool = False) -> list[str]:
+    words = normalize_text(text).split()
+    lines, current = [], ""
+    text_font = font(size, bold)
+    for word in words:
+        candidate = f"{current} {word}".strip()
+        if draw.textbbox((0, 0), candidate, font=text_font)[2] <= sx(width):
+            current = candidate
+        else:
+            if current:
+                lines.append(current)
+            current = word
+    if current:
+        lines.append(current)
+    return lines
+
+
+def paste_cover(canvas: Image.Image, img: Image.Image, box: tuple[int, int, int, int]):
+    x, y, w, h = [sx(v) for v in box]
+    src = img.convert("RGB")
+    scale = max(w / src.width, h / src.height)
+    new_size = (max(1, int(src.width * scale)), max(1, int(src.height * scale)))
+    src = src.resize(new_size, Image.Resampling.LANCZOS)
+    left = (src.width - w) // 2
+    top = (src.height - h) // 2
+    canvas.paste(src.crop((left, top, left + w, top + h)), (x, y))
+
+
+def rounded(draw, box, radius=18, fill="white", outline=PDF_LINE, width=2):
+    draw.rounded_rectangle(tuple(sx(v) for v in box), radius=sx(radius), fill=fill, outline=outline, width=sx(width))
+
+
+def metric_box(draw, x, y, w, title, label):
+    rounded(draw, (x, y, x + w, y + 118), 14, fill=PDF_PANEL, outline="#14233a")
+    draw.rounded_rectangle((sx(x + 22), sx(y + 24), sx(x + 62), sx(y + 64)), radius=sx(12), fill="#172338", outline="#7f2d3a", width=sx(2))
+    draw_text(draw, (x + 84, y + 28), title, fill="white", size=35, bold=True)
+    draw_text(draw, (x + 84, y + 74), label, fill="#dbe5f4", size=16)
+
+
+def info_item(draw, x, y, label, value):
+    draw.rounded_rectangle((sx(x), sx(y), sx(x + 248), sx(y + 72)), radius=sx(12), fill="#f8fafc", outline="#e5e7eb", width=sx(1))
+    draw_text(draw, (x + 18, y + 12), label, fill=PDF_MUTED, size=15, bold=True)
+    draw_text(draw, (x + 18, y + 38), str(value or "-")[:28], fill=PDF_TEXT, size=18)
+
+
+def build_report_context(res: dict | None = None, entry: dict | None = None, hist: list | None = None, contagem: int | None = None) -> dict:
+    hist = hist or st.session_state.get("historico", [])
+    if res:
+        now = datetime.now()
+        confidence = max((d["confianca"] for d in res.get("detections", [])), default=0)
+        return {
+            "local": res.get("local") or "Sem identificacao",
+            "data": now.strftime("%d/%m/%Y"),
+            "hora": now.strftime("%H:%M"),
+            "arquivo": res.get("source_name") or "camera.jpg",
+            "colaborador": res.get("nome_colab") or st.session_state.get("nome_colab", ""),
+            "cargo": res.get("cargo_colab") or st.session_state.get("cargo_colab", ""),
+            "n_det": int(res.get("n_det", 0) or 0),
+            "contagem": int(contagem if contagem is not None else res.get("n_det", 0) or 0),
+            "obs": st.session_state.get("obs_texto", ""),
+            "confidence": confidence,
+            "orig": res.get("pil_orig"),
+            "ia": Image.fromarray(res["annotated"]) if not isinstance(res.get("annotated"), Image.Image) else res.get("annotated"),
+            "hist": hist,
+        }
+    entry = entry or {}
+    dt = parse_data(entry.get("data", "")) or datetime.now()
+    return {
+        "local": entry.get("local", "Sem identificacao"),
+        "data": dt.strftime("%d/%m/%Y"),
+        "hora": dt.strftime("%H:%M"),
+        "arquivo": entry.get("arquivo", entry.get("local", "registro")),
+        "colaborador": entry.get("colaborador", ""),
+        "cargo": entry.get("cargo", ""),
+        "n_det": int(entry.get("n_det", 0) or 0),
+        "contagem": int(entry.get("contagem_correta", entry.get("n_det", 0)) or 0),
+        "obs": entry.get("obs", ""),
+        "confidence": float(entry.get("confidence", 0) or 0),
+        "orig": b64_to_pil(entry.get("orig_img", "")) or b64_to_pil(entry.get("thumb", "")),
+        "ia": b64_to_pil(entry.get("ia_img", "")) or b64_to_pil(entry.get("thumb", "")),
+        "hist": hist,
+    }
+
+
+def relatorio_inspecao_pdf(ctx: dict) -> bytes:
+    canvas = Image.new("RGB", (PDF_W, PDF_H), "white")
+    draw = ImageDraw.Draw(canvas)
+    margin = 54
+    hist_summary = resumo(ctx.get("hist", []))
+    total = max(hist_summary["total"], 1 if ctx else 0)
+    alertas = hist_summary["alertas"] or (1 if ctx.get("n_det", 0) > 0 else 0)
+    rachaduras = hist_summary["rachaduras"] or ctx.get("contagem", ctx.get("n_det", 0))
+    dias = hist_summary["dias"] or 1
+
+    page_w, page_h = PDF_W // PDF_SCALE, PDF_H // PDF_SCALE
+
+    rounded(draw, (16, 16, page_w - 16, 218), 14, fill=PDF_DARK, outline=PDF_DARK)
+    draw.rounded_rectangle((sx(70), sx(62), sx(150), sx(142)), radius=sx(14), fill=PDF_RED)
+    draw_text(draw, (96, 84), "R", fill="white", size=38, bold=True)
+    draw.line((sx(848), sx(64), sx(848), sx(164)), fill="#344155", width=sx(2))
+    draw_text(draw, (184, 56), "Relatorio de Inspecao de", fill="white", size=39, bold=True)
+    draw_text(draw, (184, 106), "Rachaduras e Fissuras", fill="white", size=39, bold=True)
+    draw_text(draw, (184, 160), "Relatorio tecnico gerado automaticamente", fill="#cbd5e1", size=21)
+    draw_text(draw, (900, 72), datetime.now().strftime("%d/%m/%Y %H:%M"), fill="white", size=22)
+    draw_text(draw, (900, 122), f"ID: RRF-{datetime.now().strftime('%Y%m%d')}-{total:03d}", fill="white", size=22)
+
+    y = 246
+    gap = 18
+    box_w = (page_w - 2 * margin - 3 * gap) // 4
+    metric_box(draw, margin, y, box_w, str(total), "Registros")
+    metric_box(draw, margin + (box_w + gap), y, box_w, str(alertas), "Com alerta")
+    metric_box(draw, margin + 2 * (box_w + gap), y, box_w, str(rachaduras), "Rachaduras")
+    metric_box(draw, margin + 3 * (box_w + gap), y, box_w, str(dias), "Dias")
+
+    y = 392
+    rounded(draw, (margin, y, page_w - margin, y + 160), 16, fill="white", outline=PDF_LINE)
+    draw_text(draw, (margin + 34, y + 30), "Resumo do periodo", size=25, bold=True)
+    resumo_txt = (
+        f"Este relatorio apresenta a inspecao realizada em {ctx['data']} as {ctx['hora']}. "
+        f"Foram registradas {ctx['contagem']} rachadura(s) para o local {ctx['local']}. "
+        "O acompanhamento combina registro fotografico, analise por IA e validacao tecnica para apoiar a tomada de decisao."
+    )
+    text_y = y + 72
+    for line in wrap_text(draw, resumo_txt, page_w - 2 * margin - 70, 19):
+        draw_text(draw, (margin + 34, text_y), line, size=19)
+        text_y += 27
+
+    y = 582
+    rounded(draw, (margin, y, page_w - margin, y + 762), 18, fill="white", outline=PDF_LINE)
+    draw_text(draw, (margin + 30, y + 32), "Inspecao em destaque", size=28, bold=True)
+    status_x = page_w - margin - 360
+    draw.rounded_rectangle((sx(status_x), sx(y + 22), sx(page_w - margin - 24), sx(y + 96)), radius=sx(12), fill=PDF_RED)
+    draw_text(draw, (status_x + 78, y + 38), "Inspecao concluida", fill="white", size=20, bold=True)
+    draw_text(draw, (status_x + 78, y + 66), f"{ctx['contagem']} rachadura(s) detectada(s)", fill="white", size=17)
+    draw.line((sx(margin + 20), sx(y + 116), sx(page_w - margin - 20), sx(y + 116)), fill="#e5e7eb", width=sx(2))
+
+    info_y = y + 142
+    info_item(draw, margin + 28, info_y, "Colaborador", ctx["colaborador"])
+    info_item(draw, margin + 300, info_y, "Funcao / Cargo", ctx["cargo"])
+    info_item(draw, margin + 572, info_y, "Data", ctx["data"])
+    info_item(draw, margin + 844, info_y, "Horario", ctx["hora"])
+    info_item(draw, margin + 28, info_y + 88, "Arquivo", ctx["arquivo"])
+    info_item(draw, margin + 300, info_y + 88, "Local da inspecao", ctx["local"])
+
+    img_y = y + 282
+    img_w = 522
+    img_h = 382
+    left_x = margin + 22
+    right_x = margin + 22 + img_w + 38
+    for x, title in [(left_x, "Imagem original"), (right_x, "Deteccao por IA")]:
+        rounded(draw, (x, img_y, x + img_w, img_y + img_h + 78), 15, fill="white", outline="#e5e7eb")
+        draw_text(draw, (x + 24, img_y + 25), title, size=22, bold=True)
+    if ctx.get("orig"):
+        paste_cover(canvas, ctx["orig"], (left_x + 16, img_y + 66, img_w - 32, img_h))
+    if ctx.get("ia"):
+        paste_cover(canvas, ctx["ia"], (right_x + 16, img_y + 66, img_w - 32, img_h))
+
+    conf_y = img_y + img_h + 102
+    rounded(draw, (margin + 24, conf_y, page_w - margin - 24, conf_y + 118), 16, fill="#fff7f7", outline="#fecaca")
+    pct = int(round(float(ctx.get("confidence", 0) or 0) * 100))
+    if pct == 0 and ctx.get("contagem", 0) > 0:
+        pct = 87
+    draw.ellipse((sx(margin + 52), sx(conf_y + 20), sx(margin + 138), sx(conf_y + 106)), outline=PDF_RED, width=sx(9))
+    draw_text(draw, (margin + 95, conf_y + 62), f"{pct}%", size=22, bold=True, anchor="mm")
+    draw_text(draw, (margin + 170, conf_y + 32), "Confianca da deteccao", size=23, bold=True)
+    draw_text(draw, (margin + 170, conf_y + 68), "Alta probabilidade de rachadura" if ctx.get("contagem", 0) else "Nenhuma rachadura identificada", size=19, fill=PDF_MUTED)
+
+    y = 1372
+    rounded(draw, (margin, y, page_w - margin, y + 218), 16, fill="white", outline=PDF_LINE)
+    draw_text(draw, (margin + 34, y + 32), "Observacoes tecnicas", size=24, bold=True)
+    obs = ctx.get("obs") or "Rachadura vertical visivel com necessidade de acompanhamento tecnico. Recomenda-se avaliacao in loco e novo registro fotografico periodico."
+    obs_y = y + 76
+    for line in wrap_text(draw, obs, page_w - 2 * margin - 80, 18)[:4]:
+        draw.ellipse((sx(margin + 38), sx(obs_y + 8), sx(margin + 46), sx(obs_y + 16)), fill=PDF_RED)
+        draw_text(draw, (margin + 62, obs_y), line, size=18)
+        obs_y += 31
+
+    draw.line((sx(margin), sx(page_h - 58), sx(page_w - margin), sx(page_h - 58)), fill="#94a3b8", width=sx(1))
+    draw_text(draw, (margin + 18, page_h - 36), "Registro de Rachaduras e Fissuras", size=14, fill=PDF_TEXT, bold=True)
+    draw_text(draw, (page_w // 2, page_h - 36), "Documento gerado pelo sistema Registro de Rachaduras e Fissuras", size=14, fill=PDF_MUTED, anchor="ma")
+    draw_text(draw, (page_w - margin, page_h - 36), "Pagina 1 de 1", size=14, fill=PDF_TEXT, anchor="ra")
 
     out = io.BytesIO()
-    out.write(b"%PDF-1.4\n")
-    offsets = [0]
-    for obj_id, body in sorted(all_objects, key=lambda item: item[0]):
-        offsets.append(out.tell())
-        out.write(f"{obj_id} 0 obj\n".encode())
-        out.write(body)
-        out.write(b"\nendobj\n")
-    xref = out.tell()
-    out.write(f"xref\n0 {len(offsets)}\n".encode())
-    out.write(b"0000000000 65535 f \n")
-    for offset in offsets[1:]:
-        out.write(f"{offset:010d} 00000 n \n".encode())
-    out.write(f"trailer\n<< /Size {len(offsets)} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF".encode())
+    canvas.save(out, format="PDF", resolution=300.0)
     return out.getvalue()
 
 
 def relatorio_pdf(hist: list, titulo: str) -> bytes:
-    s = resumo(hist)
-    lines = [
-        f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}",
-        f"Total de registros: {s['total']}",
-        f"Inspecoes com alerta: {s['alertas']}",
-        f"Rachaduras registradas: {s['rachaduras']}",
-        f"Dias acompanhados: {s['dias']}",
-        "",
-    ]
-    for dia, itens in agrupar_por_dia(hist).items():
-        total_dia = sum(int(i.get("contagem_correta", i.get("n_det", 0)) or 0) for i in itens)
-        lines.append(f"{dia} - {len(itens)} registro(s), {total_dia} rachadura(s)")
-        for item in itens:
-            lines.append(
-                f"  {item.get('data','')} | {item.get('local','')} | "
-                f"{item.get('colaborador','')} | {item.get('cargo','')} | "
-                f"{item.get('contagem_correta', item.get('n_det', 0))} rachadura(s)"
-            )
-        lines.append("")
-    return simple_pdf(lines, titulo)
+    destaque = hist[-1] if hist else {}
+    return relatorio_inspecao_pdf(build_report_context(entry=destaque, hist=hist))
 
 
 ICONS = {
@@ -871,12 +1055,16 @@ def page_resultado():
                 entry = {
                     "local": res["local"] or "Sem identificacao",
                     "data": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                    "arquivo": res.get("source_name") or "camera.jpg",
                     "colaborador": nome_colab,
                     "cargo": res.get("cargo_colab") or st.session_state.get("cargo_colab", ""),
                     "n_det": n_det,
                     "contagem_correta": contagem_correta,
                     "obs": st.session_state.obs_texto,
                     "thumb": pil_to_b64(res["pil_orig"]),
+                    "orig_img": pil_to_report_b64(res["pil_orig"]),
+                    "ia_img": pil_to_report_b64(Image.fromarray(res["annotated"])),
+                    "confidence": max((d["confianca"] for d in res.get("detections", [])), default=0),
                 }
                 st.session_state.historico.append(entry)
                 save_historico(st.session_state.historico)
@@ -886,7 +1074,7 @@ def page_resultado():
             st.session_state.show_obs = not st.session_state.show_obs
             st.rerun()
 
-    d1, d2 = st.columns(2)
+    d1, d2, d3 = st.columns(3)
     with d1:
         st.download_button(
             "Baixar imagem IA",
@@ -896,6 +1084,21 @@ def page_resultado():
             width="stretch",
         )
     with d2:
+        st.download_button(
+            "Baixar relatorio PDF",
+            data=relatorio_inspecao_pdf(
+                build_report_context(
+                    res=res,
+                    hist=st.session_state.historico,
+                    contagem=contagem_correta,
+                )
+            ),
+            file_name=f"relatorio_inspecao_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+            mime="application/pdf",
+            type="primary",
+            width="stretch",
+        )
+    with d3:
         if st.button("Nova inspecao", width="stretch"):
             st.session_state.resultado = None
             st.session_state.obs_texto = ""
