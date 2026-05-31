@@ -1,5 +1,5 @@
 ﻿"""
-Inspetor de Qualidade - Deteccao de rachaduras e fissuras.
+Inspetor de Qualidade - Detecção de rachaduras e fissuras.
 
 Uso:
     streamlit run app/app.py
@@ -31,7 +31,7 @@ IOU = 0.45
 IMGSZ = 640
 DEVICE = 0 if torch.cuda.is_available() else "cpu"
 
-CARGOS = ["Engenheiro(a)", "Mestre de Obras", "Tecnico(a)", "Inspetor(a)", "Outro"]
+CARGOS = ["Engenheiro(a)", "Mestre de Obras", "Técnico(a)", "Inspetor(a)", "Outro"]
 HISTORICO_FILE = Path("results/historico_inspecoes.json")
 PERFIL_FILE = Path("results/perfil_colaborador.json")
 HISTORICO_FILE.parent.mkdir(exist_ok=True)
@@ -520,6 +520,8 @@ def load_perfil() -> dict:
         try:
             perfil = json.loads(PERFIL_FILE.read_text(encoding="utf-8"))
             cargo = perfil.get("cargo_colab", CARGOS[0])
+            if cargo == "Tecnico(a)":
+                cargo = "Técnico(a)"
             if cargo not in CARGOS:
                 cargo = CARGOS[0]
             return {
@@ -553,7 +555,7 @@ def historico_to_csv(hist: list) -> bytes:
         "n_rachaduras_ia",
         "contagem_correta",
         "diferenca",
-        "observacao",
+        "observação",
     ]
     writer = csv.DictWriter(buf, fieldnames=campos, extrasaction="ignore")
     writer.writeheader()
@@ -570,7 +572,7 @@ def historico_to_csv(hist: list) -> bytes:
                 "n_rachaduras_ia": n_ia,
                 "contagem_correta": n_cor,
                 "diferenca": n_cor - n_ia,
-                "observacao": item.get("obs", ""),
+                "observação": item.get("obs", ""),
             }
         )
     return buf.getvalue().encode("utf-8-sig")
@@ -629,11 +631,11 @@ def font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.Im
 
 
 def draw_text(draw: ImageDraw.ImageDraw, xy, text, fill=PDF_TEXT, size=24, bold=False, anchor=None):
-    draw.text((sx(xy[0]), sx(xy[1])), normalize_text(text), fill=fill, font=font(size, bold), anchor=anchor)
+    draw.text((sx(xy[0]), sx(xy[1])), str(text or ""), fill=fill, font=font(size, bold), anchor=anchor)
 
 
 def wrap_text(draw: ImageDraw.ImageDraw, text: str, width: int, size: int, bold: bool = False) -> list[str]:
-    words = normalize_text(text).split()
+    words = str(text or "").split()
     lines, current = [], ""
     text_font = font(size, bold)
     for word in words:
@@ -683,7 +685,7 @@ def build_report_context(res: dict | None = None, entry: dict | None = None, his
         now = datetime.now()
         confidence = max((d["confianca"] for d in res.get("detections", [])), default=0)
         return {
-            "local": res.get("local") or "Sem identificacao",
+            "local": res.get("local") or "Sem identificação",
             "data": now.strftime("%d/%m/%Y"),
             "hora": now.strftime("%H:%M"),
             "arquivo": res.get("source_name") or "camera.jpg",
@@ -700,7 +702,7 @@ def build_report_context(res: dict | None = None, entry: dict | None = None, his
     entry = entry or {}
     dt = parse_data(entry.get("data", "")) or datetime.now()
     return {
-        "local": entry.get("local", "Sem identificacao"),
+        "local": entry.get("local", "Sem identificação"),
         "data": dt.strftime("%d/%m/%Y"),
         "hora": dt.strftime("%H:%M"),
         "arquivo": entry.get("arquivo", entry.get("local", "registro")),
@@ -732,9 +734,9 @@ def relatorio_inspecao_pdf(ctx: dict) -> bytes:
     draw.rounded_rectangle((sx(70), sx(62), sx(150), sx(142)), radius=sx(14), fill=PDF_RED)
     draw_text(draw, (96, 84), "R", fill="white", size=38, bold=True)
     draw.line((sx(848), sx(64), sx(848), sx(164)), fill="#344155", width=sx(2))
-    draw_text(draw, (184, 56), "Relatorio de Inspecao de", fill="white", size=39, bold=True)
+    draw_text(draw, (184, 56), "Relatório de Inspeção de", fill="white", size=39, bold=True)
     draw_text(draw, (184, 106), "Rachaduras e Fissuras", fill="white", size=39, bold=True)
-    draw_text(draw, (184, 160), "Relatorio tecnico gerado automaticamente", fill="#cbd5e1", size=21)
+    draw_text(draw, (184, 160), "Relatório técnico gerado automaticamente", fill="#cbd5e1", size=21)
     draw_text(draw, (900, 72), datetime.now().strftime("%d/%m/%Y %H:%M"), fill="white", size=22)
     draw_text(draw, (900, 122), f"ID: RRF-{datetime.now().strftime('%Y%m%d')}-{total:03d}", fill="white", size=22)
 
@@ -748,11 +750,11 @@ def relatorio_inspecao_pdf(ctx: dict) -> bytes:
 
     y = 392
     rounded(draw, (margin, y, page_w - margin, y + 160), 16, fill="white", outline=PDF_LINE)
-    draw_text(draw, (margin + 34, y + 30), "Resumo do periodo", size=25, bold=True)
+    draw_text(draw, (margin + 34, y + 30), "Resumo do período", size=25, bold=True)
     resumo_txt = (
-        f"Este relatorio apresenta a inspecao realizada em {ctx['data']} as {ctx['hora']}. "
+        f"Este relatório apresenta a inspeção realizada em {ctx['data']} às {ctx['hora']}. "
         f"Foram registradas {ctx['contagem']} rachadura(s) para o local {ctx['local']}. "
-        "O acompanhamento combina registro fotografico, analise por IA e validacao tecnica para apoiar a tomada de decisao."
+        "O acompanhamento combina registro fotográfico, análise por IA e validação técnica para apoiar a tomada de decisão."
     )
     text_y = y + 72
     for line in wrap_text(draw, resumo_txt, page_w - 2 * margin - 70, 19):
@@ -761,27 +763,27 @@ def relatorio_inspecao_pdf(ctx: dict) -> bytes:
 
     y = 582
     rounded(draw, (margin, y, page_w - margin, y + 762), 18, fill="white", outline=PDF_LINE)
-    draw_text(draw, (margin + 30, y + 32), "Inspecao em destaque", size=28, bold=True)
+    draw_text(draw, (margin + 30, y + 32), "Inspeção em destaque", size=28, bold=True)
     status_x = page_w - margin - 360
     draw.rounded_rectangle((sx(status_x), sx(y + 22), sx(page_w - margin - 24), sx(y + 96)), radius=sx(12), fill=PDF_RED)
-    draw_text(draw, (status_x + 78, y + 38), "Inspecao concluida", fill="white", size=20, bold=True)
+    draw_text(draw, (status_x + 78, y + 38), "Inspeção concluída", fill="white", size=20, bold=True)
     draw_text(draw, (status_x + 78, y + 66), f"{ctx['contagem']} rachadura(s) detectada(s)", fill="white", size=17)
     draw.line((sx(margin + 20), sx(y + 116), sx(page_w - margin - 20), sx(y + 116)), fill="#e5e7eb", width=sx(2))
 
     info_y = y + 142
     info_item(draw, margin + 28, info_y, "Colaborador", ctx["colaborador"])
-    info_item(draw, margin + 300, info_y, "Funcao / Cargo", ctx["cargo"])
+    info_item(draw, margin + 300, info_y, "Função / Cargo", ctx["cargo"])
     info_item(draw, margin + 572, info_y, "Data", ctx["data"])
-    info_item(draw, margin + 844, info_y, "Horario", ctx["hora"])
+    info_item(draw, margin + 844, info_y, "Horário", ctx["hora"])
     info_item(draw, margin + 28, info_y + 88, "Arquivo", ctx["arquivo"])
-    info_item(draw, margin + 300, info_y + 88, "Local da inspecao", ctx["local"])
+    info_item(draw, margin + 300, info_y + 88, "Local da inspeção", ctx["local"])
 
     img_y = y + 282
     img_w = 522
     img_h = 382
     left_x = margin + 22
     right_x = margin + 22 + img_w + 38
-    for x, title in [(left_x, "Imagem original"), (right_x, "Deteccao por IA")]:
+    for x, title in [(left_x, "Imagem original"), (right_x, "Detecção por IA")]:
         rounded(draw, (x, img_y, x + img_w, img_y + img_h + 78), 15, fill="white", outline="#e5e7eb")
         draw_text(draw, (x + 24, img_y + 25), title, size=22, bold=True)
     if ctx.get("orig"):
@@ -796,13 +798,13 @@ def relatorio_inspecao_pdf(ctx: dict) -> bytes:
         pct = 87
     draw.ellipse((sx(margin + 52), sx(conf_y + 20), sx(margin + 138), sx(conf_y + 106)), outline=PDF_RED, width=sx(9))
     draw_text(draw, (margin + 95, conf_y + 62), f"{pct}%", size=22, bold=True, anchor="mm")
-    draw_text(draw, (margin + 170, conf_y + 32), "Confianca da deteccao", size=23, bold=True)
+    draw_text(draw, (margin + 170, conf_y + 32), "Confiança da detecção", size=23, bold=True)
     draw_text(draw, (margin + 170, conf_y + 68), "Alta probabilidade de rachadura" if ctx.get("contagem", 0) else "Nenhuma rachadura identificada", size=19, fill=PDF_MUTED)
 
     y = 1372
     rounded(draw, (margin, y, page_w - margin, y + 218), 16, fill="white", outline=PDF_LINE)
-    draw_text(draw, (margin + 34, y + 32), "Observacoes tecnicas", size=24, bold=True)
-    obs = ctx.get("obs") or "Rachadura vertical visivel com necessidade de acompanhamento tecnico. Recomenda-se avaliacao in loco e novo registro fotografico periodico."
+    draw_text(draw, (margin + 34, y + 32), "Observações técnicas", size=24, bold=True)
+    obs = ctx.get("obs") or "Rachadura vertical visível com necessidade de acompanhamento técnico. Recomenda-se avaliação in loco e novo registro fotográfico periódico."
     obs_y = y + 76
     for line in wrap_text(draw, obs, page_w - 2 * margin - 80, 18)[:4]:
         draw.ellipse((sx(margin + 38), sx(obs_y + 8), sx(margin + 46), sx(obs_y + 16)), fill=PDF_RED)
@@ -812,7 +814,7 @@ def relatorio_inspecao_pdf(ctx: dict) -> bytes:
     draw.line((sx(margin), sx(page_h - 58), sx(page_w - margin), sx(page_h - 58)), fill="#94a3b8", width=sx(1))
     draw_text(draw, (margin + 18, page_h - 36), "Registro de Rachaduras e Fissuras", size=14, fill=PDF_TEXT, bold=True)
     draw_text(draw, (page_w // 2, page_h - 36), "Documento gerado pelo sistema Registro de Rachaduras e Fissuras", size=14, fill=PDF_MUTED, anchor="ma")
-    draw_text(draw, (page_w - margin, page_h - 36), "Pagina 1 de 1", size=14, fill=PDF_TEXT, anchor="ra")
+    draw_text(draw, (page_w - margin, page_h - 36), "Página 1 de 1", size=14, fill=PDF_TEXT, anchor="ra")
 
     out = io.BytesIO()
     canvas.save(out, format="PDF", resolution=300.0)
@@ -906,7 +908,7 @@ def hist_card(item: dict):
 
 def show_history_list(hist: list, manage: bool = False):
     if not hist:
-        st.markdown('<div class="help-empty">Nenhuma inspecao salva ainda.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="help-empty">Nenhuma inspeção salva ainda.</div>', unsafe_allow_html=True)
         return
     for idx, item in reversed(list(enumerate(hist))):
         col_card, col_action = st.columns([8, 1])
@@ -939,7 +941,7 @@ def page_inspecao():
         placeholder="Ex.: Raquel",
         key="nome_colab",
     )
-    cargo_colab = st.selectbox("Funcao / Cargo", CARGOS, key="cargo_colab")
+    cargo_colab = st.selectbox("Função / Cargo", CARGOS, key="cargo_colab")
     if nome_colab and (
         nome_colab != perfil_nome_anterior or cargo_colab != perfil_cargo_anterior
     ):
@@ -967,15 +969,15 @@ def page_inspecao():
     uploaded = st.file_uploader(
         "Upload de arquivos",
         type=["jpg", "jpeg", "png", "bmp", "webp"],
-        help="JPG, PNG, BMP ou WEBP ate 200MB.",
+        help="JPG, PNG, BMP ou WEBP até 200MB.",
     )
 
     section("Captura em campo", "camera")
-    camera_img = st.camera_input("Abrir camera", label_visibility="collapsed")
+    camera_img = st.camera_input("Abrir câmera", label_visibility="collapsed")
 
-    section("Informacoes da inspecao", "pin")
+    section("Informações da inspeção", "pin")
     local_obra = st.text_input(
-        "Local da inspecao",
+        "Local da inspeção",
         value=st.session_state.local_input,
         placeholder="Ex.: Ponto de apoio, Pilar 12, Viga 03",
     )
@@ -989,7 +991,7 @@ def page_inspecao():
             st.warning("Informe o colaborador antes de concluir o registro.")
 
         if not Path(MODEL_PATH).exists():
-            st.error(f"Modelo nao encontrado: `{MODEL_PATH}`. Execute o treino primeiro.")
+            st.error(f"Modelo não encontrado: `{MODEL_PATH}`. Execute o treino primeiro.")
             st.stop()
 
         pil_img = Image.open(img_source).convert("RGB")
@@ -1011,18 +1013,18 @@ def page_inspecao():
         st.rerun()
 
     st.markdown(
-        '<div class="help-empty">Envie uma imagem ou abra a camera para iniciar a analise por IA.</div>',
+        '<div class="help-empty">Envie uma imagem ou abra a câmera para iniciar a análise por IA.</div>',
         unsafe_allow_html=True,
     )
 
 
 def page_resultado():
-    render_header("Resultado da inspecao")
+    render_header("Resultado da inspeção")
     res = st.session_state.resultado
     if not res:
-        st.markdown('<div class="help-empty">Nenhuma inspecao analisada ainda.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="help-empty">Nenhuma inspeção analisada ainda.</div>', unsafe_allow_html=True)
         if st.button("Iniciar coleta", type="primary", width="stretch"):
-            st.session_state.page = "Inicio"
+            st.session_state.page = "Início"
             st.rerun()
         return
 
@@ -1033,7 +1035,7 @@ def page_resultado():
         <div class="status-card {'ok' if not alerta else ''}">
           <div class="status-icon">{icon_svg("check")}</div>
           <div>
-            <div class="status-title">Inspecao concluida</div>
+            <div class="status-title">Inspeção concluída</div>
             <div class="status-sub">{n_det} rachadura(s) detectada(s)</div>
           </div>
         </div>
@@ -1046,7 +1048,7 @@ def page_resultado():
     st.image(res["pil_orig"], width="stretch")
     st.markdown("</div>", unsafe_allow_html=True)
 
-    section("Deteccao por IA", "ia")
+    section("Detecção por IA", "ia")
     st.markdown('<div class="image-frame">', unsafe_allow_html=True)
     st.image(res["annotated"], width="stretch")
     st.markdown("</div>", unsafe_allow_html=True)
@@ -1056,7 +1058,7 @@ def page_resultado():
         confidence = max(d["confianca"] for d in res["detections"])
     metric_row(
         [
-            (f"{round(confidence * 100)}%", "Confianca"),
+            (f"{round(confidence * 100)}%", "Confiança"),
             (str(n_det), "IA"),
             (res.get("local") or "Sem local", "Local"),
         ]
@@ -1074,7 +1076,7 @@ def page_resultado():
 
     if st.session_state.show_obs:
         st.session_state.obs_texto = st.text_area(
-            "Observacao tecnica",
+            "Observação técnica",
             value=st.session_state.obs_texto,
             placeholder="Ex.: fissura vertical fina proxima ao pilar.",
         )
@@ -1087,7 +1089,7 @@ def page_resultado():
                 st.warning("Informe o nome do colaborador antes de salvar.")
             else:
                 entry = {
-                    "local": res["local"] or "Sem identificacao",
+                    "local": res["local"] or "Sem identificação",
                     "data": datetime.now().strftime("%d/%m/%Y %H:%M"),
                     "arquivo": res.get("source_name") or "camera.jpg",
                     "colaborador": nome_colab,
@@ -1103,9 +1105,9 @@ def page_resultado():
                 st.session_state.historico.append(entry)
                 save_historico(st.session_state.historico)
                 save_perfil(nome_colab, entry["cargo"])
-                st.success("Registro salvo no diario de obra.")
+                st.success("Registro salvo no diário de obra.")
     with b2:
-        if st.button("Adicionar observacao", width="stretch"):
+        if st.button("Adicionar observação", width="stretch"):
             st.session_state.show_obs = not st.session_state.show_obs
             st.rerun()
 
@@ -1120,7 +1122,7 @@ def page_resultado():
         )
     with d2:
         st.download_button(
-            "Baixar relatorio PDF",
+            "Baixar relatório PDF",
             data=relatorio_inspecao_pdf(
                 build_report_context(
                     res=res,
@@ -1134,12 +1136,12 @@ def page_resultado():
             width="stretch",
         )
     with d3:
-        if st.button("Nova inspecao", width="stretch"):
+        if st.button("Nova inspeção", width="stretch"):
             st.session_state.resultado = None
             st.session_state.obs_texto = ""
             st.session_state.local_input = ""
             st.session_state.show_obs = False
-            st.session_state.page = "Inicio"
+            st.session_state.page = "Início"
             save_perfil(
                 res.get("nome_colab") or st.session_state.get("nome_colab", ""),
                 res.get("cargo_colab") or st.session_state.get("cargo_colab", CARGOS[0]),
@@ -1148,7 +1150,7 @@ def page_resultado():
 
 
 def page_historico():
-    render_header("Historico e diario de obra")
+    render_header("Histórico e diário de obra")
     hist = st.session_state.historico
     s = resumo(hist)
     metric_row(
@@ -1158,7 +1160,7 @@ def page_historico():
             (str(s["dias"]), "Dias"),
         ]
     )
-    section("Diario de obra", "clipboard")
+    section("Diário de obra", "clipboard")
     show_history_list(hist, manage=True)
 
     if hist:
@@ -1179,7 +1181,7 @@ def page_historico():
 
 
 def page_dashboard():
-    render_header("Dashboard de registros diarios")
+    render_header("Dashboard de registros diários")
     hist = st.session_state.historico
     grupos = agrupar_por_dia(hist)
     s = resumo(hist)
@@ -1204,21 +1206,21 @@ def page_dashboard():
         chart_rows.append(
             {
                 "dia": dia,
-                "inspecoes": len(itens),
+                "inspeções": len(itens),
                 "rachaduras": sum(int(i.get("contagem_correta", i.get("n_det", 0)) or 0) for i in itens),
             }
         )
-    st.bar_chart(pd.DataFrame(chart_rows), x="dia", y=["inspecoes", "rachaduras"], width="stretch")
+    st.bar_chart(pd.DataFrame(chart_rows), x="dia", y=["inspeções", "rachaduras"], width="stretch")
 
-    section("Registros do periodo", "calendar")
+    section("Registros do período", "calendar")
     show_history_list(hist_filtrado, manage=False)
 
     safe_day = re.sub(r"[^0-9A-Za-z_-]+", "_", normalize_text(selected_day).strip("_")) or "todos"
     c1, c2 = st.columns(2)
     with c1:
         st.download_button(
-            "Baixar relatorio PDF",
-            data=relatorio_pdf(hist_filtrado, f"Relatorio - {selected_day}"),
+            "Baixar relatório PDF",
+            data=relatorio_pdf(hist_filtrado, f"Relatório - {selected_day}"),
             file_name=f"relatorio_inspecoes_{safe_day}.pdf",
             mime="application/pdf",
             type="primary",
@@ -1243,7 +1245,7 @@ for key, val in [
     ("local_input", ""),
     ("show_obs", False),
     ("del_confirm", -1),
-    ("page", "Inicio"),
+    ("page", "Início"),
     ("nome_colab", perfil_colaborador["nome_colab"]),
     ("cargo_colab", perfil_colaborador["cargo_colab"]),
 ]:
@@ -1255,7 +1257,7 @@ with st.sidebar:
     st.markdown("### Residencia IA")
     st.caption("Inspetor de Qualidade - Engenharia Civil")
     st.divider()
-    st.markdown("#### Ultimas inspecoes")
+    st.markdown("#### Últimas inspeções")
     show_history_list(st.session_state.historico[-5:], manage=False)
 
 
@@ -1263,10 +1265,17 @@ st.markdown('<div class="app-shell">', unsafe_allow_html=True)
 
 page = st.session_state.page
 if page == "Inicio":
+    st.session_state.page = "Início"
+    page = "Início"
+if page == "Historico":
+    st.session_state.page = "Histórico"
+    page = "Histórico"
+
+if page == "Início":
     page_inspecao()
 elif page == "Resultado":
     page_resultado()
-elif page == "Historico":
+elif page == "Histórico":
     page_historico()
 else:
     page_dashboard()
@@ -1275,9 +1284,9 @@ st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown('<div class="bottom-nav">', unsafe_allow_html=True)
 selected_page = st.radio(
-    "Navegacao",
-    ["Inicio", "Historico", "Resultado", "Dashboard"],
-    index=["Inicio", "Historico", "Resultado", "Dashboard"].index(st.session_state.page),
+    "Navegação",
+    ["Início", "Histórico", "Resultado", "Dashboard"],
+    index=["Início", "Histórico", "Resultado", "Dashboard"].index(st.session_state.page),
     horizontal=True,
     label_visibility="collapsed",
 )
