@@ -1,0 +1,83 @@
+\relax 
+\providecommand \babel@aux [2]{\global \let \babel@toc \@gobbletwo }
+\@nameuse{bbl@beforestart}
+\catcode `"\active 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\babel@aux{brazil}{}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Resumo executivo}{2}{section.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.1}Nota sobre uma solução alternativa escalável: SAM\,3 (modelo de fundação / LLM)}{2}{subsection.1.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}Sobre o Desafio 2}{2}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Requisitos atendidos.}{2}{paragraph*.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Natureza do problema.}{3}{paragraph*.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Formas de solução e solução abordada}{3}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Alternativas consideradas}{3}{subsection.3.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Comparação das formas de solução. A escolha equilibra precisão na forma fina da trinca com custo computacional viável.}}{3}{table.caption.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Solução adotada}{3}{subsection.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Contexto da rede neural YOLO e processo de decisão}{3}{subsection.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Por que a versão 11?}{3}{paragraph*.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Processo de decisão passo a passo.}{3}{paragraph*.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Análise exploratória dos dados (EDA)}{4}{subsection.3.4}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Análise exploratória do dataset de rachaduras.}}{5}{figure.caption.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Planejamento — UX/UI e implementação}{5}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Processo de planejamento de UX/UI}{5}{subsection.4.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Planejamento de UX/UI — protótipo das quatro telas principais (tela1 a tela4).}}{6}{figure.caption.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Como ficou implementado}{6}{subsection.4.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Implementação final do aplicativo \emph  {Inspetor de Qualidade} (app-1 a app-5).}}{7}{figure.caption.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Organização do projeto}{8}{section.5}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Estrutura do projeto \texttt  {desafio2\_trincas/}.}}{8}{table.caption.9}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Particionamento do dataset (1.551 imagens, classe única \texttt  {rachadura}).}}{8}{table.caption.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Métricas do modelo e justificativa da escolha}{8}{section.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Critérios de decisão}{8}{subsection.6.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Por que essas métricas}{9}{subsection.6.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Justificativa das métricas escolhidas.}}{9}{table.caption.11}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Resultados validados no conjunto de teste}{9}{subsection.6.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Métricas no conjunto de teste. O modelo V3 (1280px) foi escolhido para produção por melhor desempenho de \emph  {caixa} (localização) e maior recall — prioridade em inspeção.}}{9}{table.caption.12}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4}Métricas de rede neural — matrizes de confusão e curvas}{10}{subsection.6.4}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Matrizes de confusão — balanço entre rachadura e fundo.}}{10}{figure.caption.13}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Curvas de avaliação — usadas para definir o limiar de confiança operacional.}}{10}{figure.caption.14}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Resultados gerados pelo modelo}{10}{section.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Treinamento e convergência}{11}{subsection.7.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Curvas de treino/validação ao longo das épocas. As colunas da esquerda mostram as perdas de treino (box, seg, cls, dfl) e as da direita as métricas de validação (precision, recall, mAP@0.5 e mAP@0.5:0.95). Convergência estável sem \emph  {overfitting} severo.}}{11}{figure.caption.15}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Como ler as curvas de perda.}{11}{paragraph*.16}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Como ler as curvas de métricas.}{11}{paragraph*.17}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Exemplos de lotes de treino e de predição em validação.}}{12}{figure.caption.18}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{O que mostram os lotes de treino.}{12}{paragraph*.19}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{O que mostram as predições em validação.}{12}{paragraph*.20}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Configuração de treino (V3, produção).}{12}{paragraph*.21}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Comparação entre versões do modelo (V1 \emph  {vs} V3)}{12}{subsection.7.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Por que a resolução importa para fissuras.}{12}{paragraph*.22}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Comparativo quantitativo entre V1 (640\,px) e V3 (1280\,px): mAP@0.5, Precision e Recall de caixa. O V3 supera o V1 em todas as métricas principais.}}{13}{figure.caption.23}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Comparações qualitativas entre V1 e V3. Nas mesmas imagens, o V3 produz máscaras mais aderentes à forma real da fissura e detecta instâncias que o V1 perde.}}{14}{figure.caption.24}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{O que observar nas comparações visuais.}{14}{paragraph*.25}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}Inferência final — máscaras sobre imagens de teste}{14}{subsection.7.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces Inferência do modelo V3 no notebook — máscaras de segmentação coloridas sobrepostas às imagens de teste. Cada instância de rachadura recebe uma máscara independente, com caixa delimitadora e pontuação de confiança.}}{15}{figure.caption.26}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Leitura das inferências.}{15}{paragraph*.27}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {8}Aplicação — resultados na prática}{15}{section.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.1}Contexto das imagens reais utilizadas}{15}{subsection.8.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.2}Resultados da detecção nas imagens reais}{16}{subsection.8.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {11}{\ignorespaces Resultados da aplicação em fotos reais captadas no prédio — detecção e segmentação das rachaduras em diferentes tipos de fundo.}}{16}{figure.caption.28}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {12}{\ignorespaces Saída completa de teste do aplicativo (imagem original $\times $ detecção da IA com máscara e confiança) — foto real capturada em campo.}}{17}{figure.caption.29}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {9}Entrega da solução}{17}{section.9}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Composição da entrega.}}{17}{table.caption.30}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.1}Pensado para o colaborador e para o empresário}{17}{subsection.9.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{O colaborador em campo.}{17}{paragraph*.31}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{O empresário.}{17}{paragraph*.32}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.2}Guia rápido para o usuário (tela1 a tela4)}{18}{subsection.9.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {13}{\ignorespaces Guia visual do usuário — fluxo completo de uso (tela1 a tela4).}}{19}{figure.caption.33}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {14}{\ignorespaces Guia do usuário consolidado — do registro em campo ao painel gerencial.}}{20}{figure.caption.34}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.3}Planejamento de implementação — primeiros passos}{20}{subsection.9.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Etapa 1 — Diagnóstico da operação atual.}{20}{paragraph*.35}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Etapa 2 — Padronização da captura em campo.}{21}{paragraph*.36}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Etapa 3 — Projeto piloto e validação.}{21}{paragraph*.37}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Etapa 4 — Integração com banco de dados e melhoria do modelo.}{21}{paragraph*.38}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Etapa 5 — Implantação oficial e monitoramento.}{21}{paragraph*.39}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {15}{\ignorespaces Etapas do plano de implementação — do diagnóstico ao monitoramento contínuo (detalhado no PDF de implementação, ID: IMP-RRF-2026-001).}}{21}{figure.caption.40}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.4}Guia de planejamento de implementação (PDF à parte)}{22}{subsection.9.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {10}Conclusão e próximos passos}{22}{section.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {10.1}Conclusão}{22}{subsection.10.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {10.2}Próximos passos}{22}{subsection.10.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Melhoria do modelo com novos dados.}{22}{paragraph*.41}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Novos modelos em investigação.}{23}{paragraph*.42}\protected@file@percent }
+\gdef \@abspage@last{24}

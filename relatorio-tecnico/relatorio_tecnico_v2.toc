@@ -1,0 +1,54 @@
+\babel@toc {brazil}{}\relax 
+\contentsline {section}{\numberline {1}Resumo executivo}{2}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Nota sobre uma solução alternativa escalável: SAM\,3 (modelo de fundação / LLM)}{2}{subsection.1.1}%
+\contentsline {section}{\numberline {2}Sobre o Desafio 2}{2}{section.2}%
+\contentsline {paragraph}{Requisitos atendidos.}{2}{paragraph*.1}%
+\contentsline {paragraph}{Natureza do problema.}{3}{paragraph*.2}%
+\contentsline {section}{\numberline {3}Formas de solução e solução abordada}{3}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Alternativas consideradas}{3}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Solução adotada}{3}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Contexto da rede neural YOLO e processo de decisão}{3}{subsection.3.3}%
+\contentsline {paragraph}{Por que a versão 11?}{3}{paragraph*.4}%
+\contentsline {paragraph}{Processo de decisão passo a passo.}{3}{paragraph*.5}%
+\contentsline {subsection}{\numberline {3.4}Análise exploratória dos dados (EDA)}{4}{subsection.3.4}%
+\contentsline {section}{\numberline {4}Planejamento — UX/UI e implementação}{5}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Processo de planejamento de UX/UI}{5}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Como ficou implementado}{6}{subsection.4.2}%
+\contentsline {section}{\numberline {5}Organização do projeto}{8}{section.5}%
+\contentsline {section}{\numberline {6}Métricas do modelo e justificativa da escolha}{8}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Critérios de decisão}{8}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}Por que essas métricas}{9}{subsection.6.2}%
+\contentsline {subsection}{\numberline {6.3}Resultados validados no conjunto de teste}{9}{subsection.6.3}%
+\contentsline {subsection}{\numberline {6.4}Métricas de rede neural — matrizes de confusão e curvas}{10}{subsection.6.4}%
+\contentsline {section}{\numberline {7}Resultados gerados pelo modelo}{10}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Treinamento e convergência}{11}{subsection.7.1}%
+\contentsline {paragraph}{Como ler as curvas de perda.}{11}{paragraph*.16}%
+\contentsline {paragraph}{Como ler as curvas de métricas.}{11}{paragraph*.17}%
+\contentsline {paragraph}{O que mostram os lotes de treino.}{12}{paragraph*.19}%
+\contentsline {paragraph}{O que mostram as predições em validação.}{12}{paragraph*.20}%
+\contentsline {paragraph}{Configuração de treino (V3, produção).}{12}{paragraph*.21}%
+\contentsline {subsection}{\numberline {7.2}Comparação entre versões do modelo (V1 \emph {vs} V3)}{12}{subsection.7.2}%
+\contentsline {paragraph}{Por que a resolução importa para fissuras.}{12}{paragraph*.22}%
+\contentsline {paragraph}{O que observar nas comparações visuais.}{14}{paragraph*.25}%
+\contentsline {subsection}{\numberline {7.3}Inferência final — máscaras sobre imagens de teste}{14}{subsection.7.3}%
+\contentsline {paragraph}{Leitura das inferências.}{15}{paragraph*.27}%
+\contentsline {section}{\numberline {8}Aplicação — resultados na prática}{15}{section.8}%
+\contentsline {subsection}{\numberline {8.1}Contexto das imagens reais utilizadas}{15}{subsection.8.1}%
+\contentsline {subsection}{\numberline {8.2}Resultados da detecção nas imagens reais}{16}{subsection.8.2}%
+\contentsline {section}{\numberline {9}Entrega da solução}{17}{section.9}%
+\contentsline {subsection}{\numberline {9.1}Pensado para o colaborador e para o empresário}{17}{subsection.9.1}%
+\contentsline {paragraph}{O colaborador em campo.}{17}{paragraph*.31}%
+\contentsline {paragraph}{O empresário.}{17}{paragraph*.32}%
+\contentsline {subsection}{\numberline {9.2}Guia rápido para o usuário (tela1 a tela4)}{18}{subsection.9.2}%
+\contentsline {subsection}{\numberline {9.3}Planejamento de implementação — primeiros passos}{20}{subsection.9.3}%
+\contentsline {paragraph}{Etapa 1 — Diagnóstico da operação atual.}{20}{paragraph*.35}%
+\contentsline {paragraph}{Etapa 2 — Padronização da captura em campo.}{21}{paragraph*.36}%
+\contentsline {paragraph}{Etapa 3 — Projeto piloto e validação.}{21}{paragraph*.37}%
+\contentsline {paragraph}{Etapa 4 — Integração com banco de dados e melhoria do modelo.}{21}{paragraph*.38}%
+\contentsline {paragraph}{Etapa 5 — Implantação oficial e monitoramento.}{21}{paragraph*.39}%
+\contentsline {subsection}{\numberline {9.4}Guia de planejamento de implementação (PDF à parte)}{22}{subsection.9.4}%
+\contentsline {section}{\numberline {10}Conclusão e próximos passos}{22}{section.10}%
+\contentsline {subsection}{\numberline {10.1}Conclusão}{22}{subsection.10.1}%
+\contentsline {subsection}{\numberline {10.2}Próximos passos}{22}{subsection.10.2}%
+\contentsline {paragraph}{Melhoria do modelo com novos dados.}{22}{paragraph*.41}%
+\contentsline {paragraph}{Novos modelos em investigação.}{23}{paragraph*.42}%

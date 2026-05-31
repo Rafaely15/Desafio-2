@@ -1,8 +1,6 @@
 % ============================================================================
 %  RELATÓRIO TÉCNICO — DESAFIO 2
 %  Detecção de Trincas e Fissuras em Paredes (YOLOv11n-seg)
-%  Versão 2 — relatório completo (planejamento UX/UI, métricas, entrega)
-%  Esta é uma NOVA versão; a versão anterior foi preservada.
 % ============================================================================
 \documentclass[11pt,a4paper]{article}
 
@@ -46,7 +44,7 @@
 \fancyhf{}
 \renewcommand{\headrulewidth}{0.4pt}
 \fancyhead[L]{\small\color{graytxt}Desafio 2 — Detecção de Trincas e Fissuras}
-\fancyhead[R]{\small\color{graytxt}Relatório Técnico v2}
+\fancyhead[R]{\small\color{graytxt}Relatório Técnico}
 \fancyfoot[C]{\small\color{graytxt}\thepage}
 
 % ---- Caixas auxiliares -----------------------------------------------------
@@ -81,9 +79,6 @@
 \end{infobox}
 
 \vfill
-{\large \textbf{Versão 2} — documento completo}\\[4pt]
-{\color{graytxt} Esta versão preserva o relatório anterior e o expande com as seções de
-planejamento de UX/UI, organização do projeto, métricas validadas e plano de entrega.}\\[1cm]
 {\color{graytxt} \today}
 \end{titlepage}
 
@@ -186,6 +181,59 @@ Optou-se por \textbf{YOLOv11n-seg}, pois:
         viável em campo e exportável para \emph{edge} (ONNX/TFLite);
   \item entrega simultaneamente \textbf{caixa} e \textbf{máscara}, cobrindo localização e forma.
 \end{itemize}
+
+\subsection{Contexto da rede neural YOLO e processo de decisão}
+
+A família \textbf{YOLO} (\emph{You Only Look Once}) representa, desde sua concepção em 2015,
+uma das principais evoluções em detecção de objetos em tempo real. Enquanto abordagens clássicas
+realizavam duas etapas — primeiro propor regiões candidatas, depois classificá-las —, o YOLO
+unificou todo o processo em uma \textbf{única passagem pela rede}, tornando-o drasticamente mais
+rápido e adequado a dispositivos com recursos limitados.
+
+\paragraph{Por que a versão 11?}
+O \textbf{YOLOv11}, lançado pela Ultralytics em 2024, introduziu melhorias arquiteturais
+significativas em relação às versões anteriores (v8, v9, v10): cabeça de detecção
+redesenhada com atenção cruzada, redução de parâmetros mantendo acurácia e suporte nativo a
+segmentação de instâncias (\texttt{-seg}). Para o problema de trincas — objetos finos, longos
+e de forma irregular — a \textbf{máscara por pixel} é fundamentalmente superior à caixa
+retangular, que engloba muito fundo sem valor diagnóstico.
+
+\paragraph{Processo de decisão passo a passo.}
+\begin{enumerate}[leftmargin=1.6em]
+  \item \textbf{Análise do dado disponível.} O dataset de 1.551 imagens já vinha rotulado com
+        \textbf{polígonos de segmentação}, não apenas caixas. Descartar essa informação e usar
+        só detecção seria um retrocesso — foi o primeiro sinal de que segmentação era o caminho.
+  \item \textbf{Avaliação de tamanho do modelo.} Foram consideradas as variantes
+        \emph{nano} (n), \emph{small} (s) e \emph{medium} (m). A variante \emph{nano} tem
+        \(\sim\)2,8\,M parâmetros e ocupa \(\sim\)6\,MB, sendo compatível com celular,
+        tablet e computadores de campo sem GPU dedicada. Modelos maiores não apresentaram
+        ganho justificável no conjunto de validação para esse domínio.
+  \item \textbf{Resolução de entrada.} Testou-se 640\,px (V1) e 1280\,px (V3).
+        Trincas são frequentemente \textbf{objetos pequenos} — linhas de poucos pixels —
+        e a resolução maior preservou detalhes que a versão 640\,px perdia, resultando em
+        ganho de recall sem penalizar demais o tempo de inferência em CPU.
+  \item \textbf{Augmentations específicas ao domínio.} Como trincas não têm orientação
+        preferencial (podem ser horizontais, verticais ou diagonais), foram ativadas rotações
+        (\texttt{degrees=20}), espelhamentos (\texttt{fliplr}, \texttt{flipud}) e
+        \texttt{copy\_paste=0.5} — que copia instâncias de trinca de uma imagem para outra,
+        aumentando artificialmente a diversidade de contextos. O \texttt{mixup} foi desativado
+        porque mistura imagens inteiras, prejudicando as bordas finas que o modelo precisa
+        aprender a delimitar.
+  \item \textbf{Limiar operacional diferenciado.} Em avaliação formal, usou-se
+        conf\,=\,0,25 e IoU\,=\,0,50 (padrão). No aplicativo em produção, os limiares foram
+        reduzidos (conf\,=\,0,15; IoU\,=\,0,45) para \textbf{maximizar recall em campo}: é
+        preferível que o inspetor descarte um alarme falso do que deixar uma fissura real passar
+        despercebida.
+\end{enumerate}
+
+\begin{infobox}
+\textbf{Síntese da decisão.} A escolha de YOLOv11n-seg não foi arbitrária: resultou da
+combinação entre a natureza dos rótulos disponíveis (polígonos), a necessidade de leveza para
+uso em campo, a superioridade da máscara para objetos de forma irregular e a confirmação
+empírica das métricas ao comparar V1 (640\,px) com V3 (1280\,px). A família YOLO foi preferida
+a abordagens mais pesadas justamente por viabilizar o uso real em dispositivos portáteis —
+celular ou tablet — sem depender de conexão ou GPU externa.
+\end{infobox}
 
 \subsection{Análise exploratória dos dados (EDA)}
 Antes do treino, foi feita uma análise exploratória do dataset (distribuições, mapa de calor
@@ -412,72 +460,200 @@ sinalizar a trinca).
 % ============================================================================
 \section{Resultados gerados pelo modelo}
 % ============================================================================
+
+Esta seção apresenta os resultados produzidos ao longo do processo de treinamento e avaliação
+do modelo, organizados em: curvas de convergência, exemplos de lotes com augmentations,
+comparação entre versões e inferências visuais. Juntos, esses resultados permitem entender
+\textbf{como o modelo aprendeu}, \textbf{o que distingue as versões} e \textbf{como ele se
+comporta sobre imagens reais}.
+
+% ----------------------------------------------------------------------------
 \subsection{Treinamento e convergência}
-\fig{results.png}{1.0}{Curvas de treino/validação ao longo das épocas (perdas e métricas).
-Convergência estável, sem sinais de \emph{overfitting} severo (early stopping ativo).}
+% ----------------------------------------------------------------------------
+
+O treinamento do modelo V3 foi executado por até 150 épocas com \emph{early stopping} ativo
+(paciência de 50 épocas), o que significa que o treino encerrou automaticamente quando as
+métricas de validação pararam de melhorar, evitando \emph{overfitting}. A Figura abaixo
+(\texttt{results.png}) reúne as principais curvas geradas pelo framework Ultralytics ao longo
+das épocas.
+
+\fig{results.png}{1.0}{Curvas de treino/validação ao longo das épocas. As colunas da esquerda
+mostram as perdas de treino (box, seg, cls, dfl) e as da direita as métricas de validação
+(precision, recall, mAP@0.5 e mAP@0.5:0.95). Convergência estável sem \emph{overfitting}
+severo.}
+
+\paragraph{Como ler as curvas de perda.}
+As perdas (\emph{losses}) medem o quão errado o modelo está a cada época — quanto menor, melhor.
+Observa-se que todas as curvas de treino caem de forma suave e estabilizam, sem oscilações
+bruscas. As curvas de validação acompanham as de treino sem divergir, o que indica que o
+modelo \textbf{generalizou} para imagens não vistas, em vez de decorar o conjunto de treino.
+
+\paragraph{Como ler as curvas de métricas.}
+As métricas de validação (precision, recall, mAP) sobem ao longo das épocas e se estabilizam
+próximo aos valores finais reportados (\S\,6). O pico do mAP@0.5 (caixa) de 75,8\% e da
+precision de 86,8\% são atingidos e mantidos, confirmando que o modelo chegou a um ponto de
+equilíbrio estável entre aprender e generalizar.
 
 \begin{figure}[H]\centering
   \begin{subfigure}{0.48\linewidth}\centering
-    \includegraphics[width=\linewidth]{train_batch0.jpg}\caption{Lote de treino com augmentations}
+    \includegraphics[width=\linewidth]{train_batch0.jpg}
+    \caption{Lote de treino com augmentations aplicadas}
   \end{subfigure}\hfill
   \begin{subfigure}{0.48\linewidth}\centering
-    \includegraphics[width=\linewidth]{val_batch2_pred.jpg}\caption{Predições em lote de validação}
+    \includegraphics[width=\linewidth]{val_batch2_pred.jpg}
+    \caption{Predições do modelo em lote de validação}
   \end{subfigure}
-  \caption{Exemplos de lotes de treino (augmentations) e de predição em validação.}
+  \caption{Exemplos de lotes de treino e de predição em validação.}
 \end{figure}
+
+\paragraph{O que mostram os lotes de treino.}
+No lote de treino (imagem da esquerda), cada imagem já passou pelas \emph{augmentations}:
+é possível ver rachaduras rotacionadas, espelhadas e, em alguns casos, instâncias de fissuras
+copiadas de outras imagens (\texttt{copy\_paste}). Esse processo força o modelo a aprender a
+detectar trincas em qualquer orientação e contexto visual, sem depender de posição ou escala
+específica.
+
+\paragraph{O que mostram as predições em validação.}
+No lote de validação (imagem da direita), as máscaras coloridas indicam onde o modelo previu
+rachaduras. As caixas e polígonos sobrepostos às imagens originais mostram que, já durante
+o treino, o modelo identifica corretamente as fissuras — incluindo trincas finas e diagonais.
+Casos onde a máscara cobre bem a forma real da rachadura confirmam que o modelo aprendeu a
+\textbf{contornar o objeto}, não apenas a posicioná-lo dentro de uma caixa genérica.
 
 {\sloppy
-\paragraph{Configuração de treino (V3, produção).} \texttt{yolo11n-seg.pt}, 150 épocas,
-\texttt{imgsz=1280}, \texttt{batch=8}, otimizador \emph{auto}, \texttt{cos\_lr=True}.
-Augmentations específicas para fissuras: \texttt{copy\_paste=0.5}, \texttt{degrees=20},
-\texttt{fliplr=0.5}, \texttt{flipud=0.3}, \texttt{erasing=0.2} (reduzido para não apagar pixels
-de fissuras finas), \texttt{mixup=0.0} (mistura prejudica bordas finas).
+\paragraph{Configuração de treino (V3, produção).}
+\texttt{yolo11n-seg.pt} como ponto de partida (\emph{fine-tuning} a partir de pesos pré-treinados
+no COCO), 150 épocas máximas, \texttt{imgsz=1280}, \texttt{batch=8}, otimizador \emph{auto}
+(AdamW com ajuste automático de taxa de aprendizado), \texttt{cos\_lr=True} (decaimento
+co-senoidal da taxa de aprendizado — suaviza a convergência final).
+Augmentations específicas para fissuras: \texttt{copy\_paste=0.5} (diversidade de contexto),
+\texttt{degrees=20} (rotações), \texttt{fliplr=0.5} e \texttt{flipud=0.3} (espelhamentos),
+\texttt{erasing=0.2} (oclusão parcial, reduzida para não apagar pixels de fissuras muito finas),
+\texttt{mixup=0.0} (desativado — mistura de imagens inteiras prejudica as bordas finas que o
+modelo precisa aprender a delimitar).
 \par}
 
-\subsection{Comparação entre modelos (V1 \emph{vs} V3)}
-\begin{notebox}
-\textbf{Observação.} A imagem \texttt{grid\_resultados\_v3.png} citada não foi localizada na
-pasta; foram usadas as imagens de comparação efetivamente disponíveis
-(\texttt{comparacao\_v1\_vs\_v3.jpg}, \texttt{comparativo\_v1\_v3.png},
-\texttt{comparacao\_modelos\_notebook.png}).
-\end{notebox}
+% ----------------------------------------------------------------------------
+\subsection{Comparação entre versões do modelo (V1 \emph{vs} V3)}
+% ----------------------------------------------------------------------------
 
-\fig{comparativo_v1_v3.png}{0.95}{Comparativo quantitativo V1 (640px) \emph{vs} V3 (1280px).}
+Dois modelos foram treinados e avaliados: \textbf{V1} com resolução de entrada de 640\,px e
+\textbf{V3} com 1280\,px. A diferença de resolução impacta diretamente a capacidade do modelo
+de perceber objetos finos como fissuras, que frequentemente ocupam poucos pixels nas imagens
+originais.
+
+\paragraph{Por que a resolução importa para fissuras.}
+Uma rachadura fina em uma foto de parede pode ter apenas 3--5 pixels de largura quando a
+imagem é redimensionada para 640\,px. Com 1280\,px, esse mesmo objeto passa a ocupar o dobro
+de pixels, dando ao modelo mais informação para aprender a detectar e segmentar a forma real
+da fissura — especialmente em suas extremidades e ramificações. É por isso que o V3 supera o
+V1 mesmo com a mesma arquitetura e os mesmos dados.
+
+\fig{comparativo_v1_v3.png}{0.95}{Comparativo quantitativo entre V1 (640\,px) e V3 (1280\,px):
+mAP@0.5, Precision e Recall de caixa. O V3 supera o V1 em todas as métricas principais.}
+
+A imagem acima sintetiza numericamente o ganho: o V3 eleva o mAP@0.5 de 73,2\% para 75,8\% e
+o recall de 72,4\% para 74,4\% — o que na prática significa \textbf{encontrar mais fissuras
+reais por inspeção}, diretamente ligado à segurança e à qualidade do diagnóstico.
 
 \begin{figure}[H]\centering
   \begin{subfigure}{0.49\linewidth}\centering
-    \includegraphics[width=\linewidth]{comparacao_v1_vs_v3.jpg}\caption{Comparação visual V1 \emph{vs} V3}
+    \includegraphics[width=\linewidth]{comparacao_v1_vs_v3.jpg}
+    \caption{Comparação visual: máscaras V1 \emph{vs} V3 sobre a mesma imagem}
   \end{subfigure}\hfill
   \begin{subfigure}{0.49\linewidth}\centering
-    \includegraphics[width=\linewidth]{comparacao_modelos_notebook.png}\caption{Comparação no notebook}
+    \includegraphics[width=\linewidth]{comparacao_modelos_notebook.png}
+    \caption{Comparação lado a lado no notebook de avaliação}
   \end{subfigure}
-  \caption{Comparações qualitativas e quantitativas entre as versões do modelo.}
+  \caption{Comparações qualitativas entre V1 e V3. Nas mesmas imagens, o V3 produz máscaras
+  mais aderentes à forma real da fissura e detecta instâncias que o V1 perde.}
 \end{figure}
 
-\fig{inferencia_notebook.png}{0.95}{Inferência no notebook — máscaras de segmentação sobre
-imagens de teste.}
+\paragraph{O que observar nas comparações visuais.}
+Nas imagens comparativas, dois aspectos se destacam: (1) o V3 detecta fissuras que o V1 deixa
+passar — especialmente as mais finas ou localizadas em bordas da imagem; (2) as máscaras do
+V3 seguem melhor o contorno real da rachadura, com menos "sangramento" para o fundo ao redor.
+Ambos os aspectos se traduzem diretamente em inspeções mais confiáveis e relatórios mais
+precisos.
+
+% ----------------------------------------------------------------------------
+\subsection{Inferência final — máscaras sobre imagens de teste}
+% ----------------------------------------------------------------------------
+
+A imagem a seguir mostra o modelo V3 em inferência sobre imagens do conjunto de teste: imagens
+completamente novas, não vistas durante o treino nem a validação. É a prova mais direta da
+capacidade de generalização do modelo.
+
+\fig{inferencia_notebook.png}{0.95}{Inferência do modelo V3 no notebook — máscaras de
+segmentação coloridas sobrepostas às imagens de teste. Cada instância de rachadura recebe
+uma máscara independente, com caixa delimitadora e pontuação de confiança.}
+
+\paragraph{Leitura das inferências.}
+Cada região colorida representa uma instância de rachadura detectada. A confiança associada
+a cada detecção indica o grau de certeza do modelo — valores acima de 0,25 (limiar de avaliação)
+são aceitos. Nas inferências apresentadas, o modelo produz máscaras que acompanham a geometria
+alongada e irregular das fissuras, sem confundir juntas de assentamento, sombras ou variações
+de textura com patologias reais — resultado diretamente relacionado às augmentations e ao
+limiar calibrado no conjunto de validação.
 
 % ============================================================================
 \section{Aplicação — resultados na prática}
 % ============================================================================
+
+\subsection{Contexto das imagens reais utilizadas}
+
+Para validar o modelo em condições reais de uso, foram capturadas imagens \textbf{diretamente
+em um prédio}, simulando exatamente o cenário de um engenheiro em visitas técnicas: vistorias,
+inspeções de rotina e acompanhamento de ajustes em obras. Esse cuidado foi fundamental para
+testar o modelo além do dataset de treinamento e verificar sua capacidade de generalização em
+ambientes do dia a dia.
+
+As fotos foram tiradas em \textbf{diferentes condições de fundo} — um desafio real para
+qualquer sistema de detecção automática —, incluindo:
+\begin{itemize}[leftmargin=1.4em]
+  \item \textbf{Fundos lisos}: paredes rebocadas com textura uniforme, onde a rachadura se
+        destaca com clareza, mas o modelo também precisa ignorar variações de sombra e umidade.
+  \item \textbf{Fundos com pisos de diferentes granulações}: superfícies com texturas mais
+        grossas (concreto aparente, cerâmica rústica, reboco áspero), que introduzem padrões
+        visuais que poderiam ser confundidos com fissuras por modelos menos calibrados.
+  \item \textbf{Variações de iluminação e ângulo}: imagens capturadas com celular em diferentes
+        distâncias e ângulos, replicando o uso real de um vistoriador em campo.
+\end{itemize}
+
+O resultado foi \textbf{positivo em todos os casos testados com fotos reais}: o modelo
+detectou e segmentou corretamente todas as rachaduras presentes, sem falsos positivos
+relevantes nas texturas de fundo, demonstrando robustez para o cenário de aplicação pretendido.
+
+\begin{infobox}
+\textbf{Relevância do teste real.} Um modelo com boas métricas em dataset de teste pode ainda
+falhar em campo se as imagens de produção tiverem características diferentes das de treinamento.
+O fato de o modelo ter acertado todas as rachaduras capturadas no prédio — em fundos lisos e em
+pisos com granulações diversas — é um indicativo concreto de que a solução é aplicável à rotina
+real de um engenheiro ou vistoriador.
+\end{infobox}
+
+\subsection{Resultados da detecção nas imagens reais}
+
 Testes em imagens novas (não vistas no treino) demonstram o comportamento do modelo em campo
-dentro do aplicativo. Abaixo, resultados de inspeção reais (result-1 a result-3).
+dentro do aplicativo. Abaixo, resultados de inspeção reais (result-1 a result-3), obtidos com
+fotos capturadas no prédio em diversas superfícies e condições.
 
 \begin{figure}[H]\centering
   \begin{subfigure}{0.32\linewidth}\centering
-    \includegraphics[width=\linewidth]{resut-1.jpeg}\caption{result-1}
+    \includegraphics[width=\linewidth]{resut-1.jpeg}\caption{result-1 — fundo liso}
   \end{subfigure}\hfill
   \begin{subfigure}{0.32\linewidth}\centering
-    \includegraphics[width=\linewidth]{result-2.jpeg}\caption{result-2}
+    \includegraphics[width=\linewidth]{result-2.jpeg}\caption{result-2 — fundo texturizado}
   \end{subfigure}\hfill
   \begin{subfigure}{0.32\linewidth}\centering
-    \includegraphics[width=\linewidth]{result-3.jpeg}\caption{result-3}
+    \includegraphics[width=\linewidth]{result-3.jpeg}\caption{result-3 — piso granulado}
   \end{subfigure}
-  \caption{Resultados da aplicação em imagens novas — detecção e segmentação das rachaduras.}
+  \caption{Resultados da aplicação em fotos reais captadas no prédio — detecção e segmentação
+  das rachaduras em diferentes tipos de fundo.}
 \end{figure}
 
 \fig{app_test_output.jpg}{0.85}{Saída completa de teste do aplicativo (imagem original $\times$
-detecção da IA com máscara e confiança).}
+detecção da IA com máscara e confiança) — foto real capturada em campo.}
 
 % ============================================================================
 \section{Entrega da solução}
@@ -491,71 +667,227 @@ A entrega é composta por \textbf{três artefatos} complementares.
 Artefato & Descrição \\
 \midrule
 Aplicação web & \texttt{streamlit run app/app.py} — inspeção, histórico e dashboard. \\
-Relatório técnico & Este documento (\texttt{relatorio\_tecnico\_v2.tex} / PDF). \\
+Relatório técnico & Este documento (\texttt{relatorio\_tecnico.tex} / PDF). \\
 Guia de implementação & PDF à parte com o planejamento de UX/UI e roteiro de implementação. \\
 \bottomrule
 \end{tabular}
 \caption{Composição da entrega.}
 \end{table}
 
+% ----------------------------------------------------------------------------
+\subsection{Pensado para o colaborador e para o empresário}
+% ----------------------------------------------------------------------------
+
+A solução foi idealizada com dois perfis de usuário em mente, que têm necessidades distintas
+mas complementares:
+
+\paragraph{O colaborador em campo.}
+O engenheiro, vistoriador ou técnico que realiza inspeções precisa de uma ferramenta
+\textbf{rápida, intuitiva e que não atrapalhe o fluxo de trabalho}. Com o sistema, ele captura
+uma foto com o celular, obtém o resultado da IA em segundos, registra a inspeção e segue para
+o próximo ponto — sem papelada, sem planilhas manuais e sem risco de esquecer de documentar.
+
+\paragraph{O empresário.}
+Hoje, o \textbf{celular é o maior recurso e o mais portátil} de que o empresário dispõe.
+Com acesso imediato ao dashboard e ao histórico de inspeções, ele passa a ter
+\textbf{controle técnico da empresa na palma da mão}: sabe quantas rachaduras foram registradas
+por dia, por obra e por responsável, pode acompanhar a evolução das patologias ao longo do
+tempo e tomar decisões embasadas em dados reais — sem depender de relatórios verbais ou de
+estar fisicamente no canteiro.
+
+\begin{infobox}
+\textbf{Benefício central:} o sistema conecta o trabalho técnico do campo com a visão gerencial
+do escritório, usando o celular como ponte. O empresário tem acesso imediato a dados que antes
+só existiam no papel ou na memória do vistoriador.
+\end{infobox}
+
+% ----------------------------------------------------------------------------
 \subsection{Guia rápido para o usuário (tela1 a tela4)}
-Passo a passo para o colaborador em campo, ilustrado pelas telas do aplicativo:
+% ----------------------------------------------------------------------------
+Passo a passo para o colaborador em campo, ilustrado pelas telas do aplicativo. As instruções
+foram pensadas para ser claras e objetivas, facilitando o dia a dia do empreendedor e de sua
+equipe, sem necessidade de treinamento técnico prolongado:
 
 \begin{enumerate}[leftmargin=1.6em]
-  \item \textbf{Identifique-se} — informe nome e cargo (Tela 1).
-  \item \textbf{Envie a foto} — faça upload ou use a câmera apontando para a parede (Tela 2).
-  \item \textbf{Leia o resultado} — a IA marca as rachaduras com máscara e mostra confiança e
-        contagem; salve a inspeção (Tela 3).
-  \item \textbf{Acompanhe} — consulte o histórico/diário de obra e o dashboard por dia;
-        exporte CSV se necessário (Tela 4).
+  \item \textbf{Identifique-se} — informe nome e cargo (Tela 1). Esse passo garante
+        rastreabilidade: cada inspeção fica vinculada ao responsável que a realizou.
+  \item \textbf{Envie a foto} — faça upload de uma imagem ou use a câmera do dispositivo
+        apontando diretamente para a parede ou superfície a inspecionar (Tela 2). Procure
+        manter boa iluminação e enquadrar a área de interesse.
+  \item \textbf{Leia o resultado} — a IA detecta e marca as rachaduras com máscara colorida,
+        exibe a confiança de cada detecção e a contagem total. Salve a inspeção para registrá-la
+        no diário de obra (Tela 3). Se necessário, ajuste manualmente a contagem.
+  \item \textbf{Acompanhe} — consulte o histórico completo das inspeções e o dashboard com
+        indicadores por dia; exporte CSV para análises externas ou relatórios (Tela 4).
 \end{enumerate}
 
 \begin{figure}[H]\centering
   \begin{subfigure}{0.48\linewidth}\centering
-    \includegraphics[width=\linewidth]{tela1.png}\caption{Passo 1 — identificação}
+    \includegraphics[width=\linewidth]{tela1.png}\caption{Passo 1 — identificação do colaborador}
   \end{subfigure}\hfill
   \begin{subfigure}{0.48\linewidth}\centering
-    \includegraphics[width=\linewidth]{tela2.png}\caption{Passo 2 — envio da imagem}
+    \includegraphics[width=\linewidth]{tela2.png}\caption{Passo 2 — envio/captura da imagem}
   \end{subfigure}
   \\[6pt]
   \begin{subfigure}{0.48\linewidth}\centering
-    \includegraphics[width=\linewidth]{tela3.png}\caption{Passo 3 — resultado e registro}
+    \includegraphics[width=\linewidth]{tela3.png}\caption{Passo 3 — resultado da IA e registro}
   \end{subfigure}\hfill
   \begin{subfigure}{0.48\linewidth}\centering
-    \includegraphics[width=\linewidth]{tela4.png}\caption{Passo 4 — histórico e dashboard}
+    \includegraphics[width=\linewidth]{tela4.png}\caption{Passo 4 — histórico e dashboard gerencial}
   \end{subfigure}
   \caption{Guia visual do usuário — fluxo completo de uso (tela1 a tela4).}
 \end{figure}
 
-\fig{guia-do-usuario.png}{0.9}{Guia do usuário consolidado.}
+\fig{guia-do-usuario.png}{0.9}{Guia do usuário consolidado — do registro em campo ao painel gerencial.}
 
+% ----------------------------------------------------------------------------
+\subsection{Planejamento de implementação — primeiros passos}
+% ----------------------------------------------------------------------------
+
+O \textbf{guia de implementação em PDF} detalha como a empresa deve introduzir o sistema de
+forma gradual, segura e com aprendizado contínuo. A estratégia foi pensada em \textbf{cinco
+etapas}, descritas a seguir.
+
+\paragraph{Etapa 1 — Diagnóstico da operação atual.}
+Antes de implantar, a empresa mapeia como as inspeções ocorrem hoje: quais setores e estruturas
+são inspecionados, quais informações precisam ser registradas e quais pontos apresentam maior
+risco. \textbf{Entrega:} requisitos do processo e padrão inicial de uso.
+
+\paragraph{Etapa 2 — Padronização da captura em campo.}
+A equipe define como as imagens serão tiradas para maximizar a qualidade da detecção automática:
+distância, ângulo, iluminação e enquadramento recomendados. Cria-se uma orientação rápida para
+celular, tablet ou computador. \textbf{Entrega:} procedimento de captura padronizado.
+
+\paragraph{Etapa 3 — Projeto piloto e validação.}
+O sistema é testado em uma rotina real com uma equipe ou setor piloto. Os resultados do
+YOLOv11 são comparados com a inspeção manual para calibrar o modelo e identificar ajustes.
+\textbf{Entrega:} taxa de acerto, ajustes necessários e decisão para avançar.
+
+\paragraph{Etapa 4 — Integração com banco de dados e melhoria do modelo.}
+Os registros do piloto alimentam a base de dados da empresa (imagens, resultados, local, data,
+responsável, observações). Novos exemplos coletados em campo são usados para corrigir e
+aprimorar o modelo YOLOv11. \textbf{Entrega:} base de dados estruturada e modelo mais robusto.
+
+\paragraph{Etapa 5 — Implantação oficial e monitoramento.}
+Com o fluxo validado, o sistema é liberado para toda a rotina da empresa. Acompanham-se
+indicadores: acurácia de detecção, tempo por inspeção, quantidade de alertas e total de
+registros por dia, setor e responsável. \textbf{Entrega:} operação padronizada com
+rastreabilidade e monitoramento contínuo.
+
+\begin{figure}[H]\centering  
+  \includegraphics[width=\linewidth]{aplicacao1.jpg}
+  \caption{Etapas do plano de implementação — do diagnóstico ao monitoramento contínuo
+  (detalhado no PDF de implementação, ID: IMP-RRF-2026-001).}
+\end{figure}
+
+\begin{notebox}
+\textbf{Atenção.} A aprovação final das inspeções deve continuar com a equipe técnica até que
+o sistema esteja plenamente validado para a operação. A IA é uma ferramenta de apoio — a
+responsabilidade técnica permanece com o profissional habilitado.
+\end{notebox}
+
+% ----------------------------------------------------------------------------
 \subsection{Guia de planejamento de implementação (PDF à parte)}
-O detalhamento do \textbf{planejamento de implementação e do projeto de UX/UI} é entregue como
-um \textbf{documento PDF separado}:
+% ----------------------------------------------------------------------------
+O detalhamento completo do \textbf{planejamento de implementação e do projeto de UX/UI} é
+entregue como um \textbf{documento PDF separado}:
 \begin{infobox}
-\textbf{Arquivo:} \texttt{guia\_ux\_ui\_registro\_rachaduras\_fissuras.pdf}\\
-Conteúdo: jornada do usuário, decisões de design, protótipos (tela1--tela4), arquitetura da
-aplicação e roteiro de evolução (incluindo a integração futura com SAM\,3 caso haja recurso).
+\textbf{Arquivo:} \texttt{aplicacao\_empresa\_rachaduras\_yolov11\_latex.pdf}\\
+\textbf{ID:} IMP-RRF-2026-001 \quad \textbf{Data:} 31/05/2026\\
+Conteúdo: visão geral da implementação, 5 etapas detalhadas (diagnóstico, padronização,
+piloto, integração e implantação), fluxo operacional, indicadores de acompanhamento pós-implantação
+e roteiro de evolução (incluindo integração futura com SAM\,3 caso haja recurso computacional).
 \end{infobox}
 
 % ============================================================================
 \section{Conclusão e próximos passos}
 % ============================================================================
-A solução cumpre o Desafio 2: detecta e segmenta rachaduras com \textbf{mAP@0.5 = 75,8\%} e
-\textbf{Precision = 86,8\%} (caixa, teste), embarcada em um aplicativo prático de inspeção com
-histórico e dashboard, e com caminho de deploy \emph{edge} via ONNX/TFLite.
 
-\paragraph{Próximos passos.}
+\subsection{Conclusão}
+
+A solução desenvolvida cumpre integralmente o Desafio 2: um sistema de visão computacional
+capaz de \textbf{detectar e segmentar rachaduras em paredes} com \textbf{mAP@0.5 = 75,8\%} e
+\textbf{Precision = 86,8\%} no conjunto de teste, embarcado em um aplicativo prático de
+inspeção com histórico, dashboard gerencial e caminho de deploy \emph{edge} via ONNX/TFLite.
+
+Mais do que cumprir métricas, a solução foi validada em \textbf{condições reais de campo},
+com fotografias tiradas diretamente em um prédio, em superfícies de diferentes granulações e
+texturas — e o modelo acertou em todas as detecções. Isso demonstra que a solução não é apenas
+academicamente sólida, mas \textbf{aplicável ao dia a dia de um engenheiro ou vistoriador}.
+
+Do ponto de vista técnico, as decisões tomadas ao longo do projeto — escolha da segmentação de
+instâncias sobre a detecção por caixa, uso da variante nano para viabilidade em campo, aumento
+de resolução de 640 para 1280\,px, augmentations específicas para objetos finos — foram todas
+embasadas empiricamente e produziram um modelo robusto para o domínio de fissuras em
+construção civil.
+
+Do ponto de vista de negócio, a solução endereça uma lacuna real: a falta de \textbf{padronização,
+rastreabilidade e controle técnico} nas inspeções de campo. Ao conectar o trabalho do colaborador
+diretamente ao painel do empresário via celular, o sistema transforma uma tarefa antes manual
+e fragmentada em um fluxo digital, auditável e evolutivo.
+
+A entrega de um \textbf{guia de implementação em PDF} (ID: IMP-RRF-2026-001) com as cinco
+etapas de implantação completa o escopo: o projeto não termina no modelo ou no app — inclui
+um roteiro claro de como levar a solução à operação real, com validação gradual, integração
+à base de dados existente e monitoramento contínuo dos indicadores.
+
+\begin{infobox}
+\textbf{Resultado consolidado:} modelo YOLOv11n-seg treinado e validado, aplicativo funcional
+(\emph{Inspetor de Qualidade}), relatório técnico completo e guia de implementação —
+quatro artefatos que cobrem desde a rede neural até o plano de adoção pela empresa.
+\end{infobox}
+
+\subsection{Próximos passos}
+
+\paragraph{Melhoria do modelo com novos dados.}
 \begin{itemize}[leftmargin=1.4em]
-  \item Ampliar e diversificar o dataset (mais texturas/iluminações) para elevar o recall.
-  \item Classificar severidade da fissura (largura/comprimento estimados).
-  \item Em fase com mais recurso, avaliar \textbf{SAM\,3} para casos difíceis e rotulagem
-        assistida, em arquitetura híbrida com o YOLO nano em campo.
+  \item \textbf{Novos bancos de dados:} incorporar datasets públicos de fissuras como
+        \emph{CRACK500}, \emph{DeepCrack}, \emph{CFD (Crack Forest Dataset)} e
+        \emph{CrackSeg9k} para ampliar a diversidade de texturas, iluminações, tipos de
+        superfície e padrões de rachadura. Mais dados de domínios variados (asfalto,
+        concreto aparente, azulejo, reboco fino) elevarão diretamente o recall.
+  \item \textbf{Dados próprios em crescimento:} cada inspeção realizada pelo sistema é uma
+        oportunidade de coleta. Imagens capturadas em campo com validação humana retroalimentam
+        o modelo em ciclos de retreino — quanto mais a empresa usa, mais forte o modelo fica.
+  \item \textbf{Classificação de severidade:} estimar largura e comprimento da fissura para
+        categorizá-la (micro-fissura, fissura, trinca, rachadura) e priorizar ações corretivas.
 \end{itemize}
+
+\paragraph{Novos modelos em investigação.}
+\begin{itemize}[leftmargin=1.4em]
+  \item \textbf{YOLOv11s-seg / YOLOv11m-seg:} variantes \emph{small} e \emph{medium} da
+        mesma família — caso a empresa disponha de dispositivos um pouco mais robustos, o ganho
+        de parâmetros pode se traduzir em melhor mAP sem comprometer uso em campo.
+  \item \textbf{RT-DETR (Real-Time Detection Transformer):} arquitetura baseada em
+        \emph{transformers} que elimina o NMS (\emph{Non-Maximum Suppression}) e apresenta
+        resultados competitivos com YOLO em benchmarks recentes; está em avaliação como
+        alternativa para cenários com muitas fissuras próximas.
+  \item \textbf{SAM\,2 / SAM\,3 (Segment Anything Model):} em fase com maior recurso
+        computacional, modelos de fundação permitiriam segmentação \emph{zero-shot} ou
+        \emph{few-shot} — reduzindo a necessidade de rotulagem manual e generalizando para
+        novos tipos de patologia sem retreino. A arquitetura híbrida planejada combina YOLO
+        nano em campo (leve, rápido) com SAM em nuvem para refinamento e casos difíceis.
+  \item \textbf{EfficientSAM / MobileSAM:} versões compactas do SAM voltadas para dispositivos
+        com recursos limitados; em investigação para verificar viabilidade de uso em celular
+        sem GPU, complementando o YOLO na etapa de refinamento de máscara.
+  \item \textbf{Modelos multimodais (VLMs):} modelos de linguagem-visão como o
+        \emph{LLaVA} ou \emph{GPT-4o Vision} estão sendo explorados para gerar
+        \textbf{descrições automáticas das patologias detectadas} — possibilitando que o
+        relatório de inspeção inclua, além da máscara visual, um texto técnico descrevendo
+        tipo, localização e gravidade provável da fissura.
+\end{itemize}
+
+\begin{notebox}
+\textbf{Visão de longo prazo.} O YOLOv11n-seg é a base operacional atual — leve, rápido e
+validado em campo. Os modelos em investigação não substituem essa base, mas a complementam:
+a evolução natural é uma arquitetura em camadas, onde o YOLO detecta em tempo real no
+dispositivo e modelos mais poderosos refinam, descrevem e aprendem com os dados coletados
+na nuvem.
+\end{notebox}
 
 \vfill
 \begin{center}\small\color{graytxt}
-Relatório Técnico v2 — Desafio 2 — Detecção de Trincas e Fissuras em Paredes
+Relatório Técnico — Desafio 2 — Detecção de Trincas e Fissuras em Paredes
 \end{center}
 
 \end{document}
