@@ -38,7 +38,7 @@ HISTORICO_FILE.parent.mkdir(exist_ok=True)
 
 st.set_page_config(
     page_title="Registro de Rachaduras e Fissuras",
-    page_icon="ðŸ—ï¸",
+    page_icon="RI",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -68,11 +68,16 @@ html, body, [data-testid="stAppViewContainer"] {
     color: var(--text);
 }
 
-[data-testid="stHeader"] { background: transparent; }
+[data-testid="stHeader"],
+[data-testid="stToolbar"],
+[data-testid="stDecoration"],
+[data-testid="stStatusWidget"] {
+    display: none !important;
+}
 footer { visibility: hidden; }
 .block-container {
-    max-width: 920px;
-    padding: 1.1rem 1rem 6.2rem !important;
+    max-width: 520px;
+    padding: .7rem .75rem 6.2rem !important;
 }
 
 section[data-testid="stSidebar"] {
@@ -84,10 +89,10 @@ h1, h2, h3, h4, p, label, span, div { color: inherit; }
 h1, h2, h3 { letter-spacing: -.02em; }
 
 .app-shell {
-    max-width: 470px;
+    max-width: 430px;
     margin: 0 auto;
     border: 1px solid rgba(255,255,255,.10);
-    border-radius: 30px;
+    border-radius: 34px;
     background:
         linear-gradient(180deg, rgba(9, 19, 34, .96), rgba(3, 8, 18, .98)),
         radial-gradient(circle at 60% 0%, rgba(41, 92, 169, .20), transparent 22rem);
@@ -116,7 +121,19 @@ h1, h2, h3 { letter-spacing: -.02em; }
     color: white;
     background: linear-gradient(135deg, var(--red), #ff7a45);
     box-shadow: 0 10px 26px rgba(239, 68, 84, .24);
-    font-size: 1.25rem;
+}
+.brand-mark svg,
+.cloud-pill svg,
+.section-label .icon svg,
+.status-icon svg,
+.alert-mark svg {
+    width: 1.12rem;
+    height: 1.12rem;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 .brand-title {
     font-weight: 850;
@@ -150,7 +167,13 @@ h1, h2, h3 { letter-spacing: -.02em; }
 }
 .section-label .icon {
     color: var(--red);
-    font-size: 1.1rem;
+    border: 1px solid rgba(239,68,84,.46);
+    border-radius: 999px;
+    width: 30px;
+    height: 30px;
+    display: inline-grid;
+    place-items: center;
+    background: rgba(239,68,84,.08);
 }
 
 .soft-card {
@@ -360,12 +383,9 @@ div[role="radiogroup"] label:has(input:checked) {
     border-color: transparent !important;
 }
 
-@media (min-width: 860px) {
-    .app-shell { max-width: 780px; }
-}
 @media (max-width: 640px) {
     .block-container { padding-left: .7rem !important; padding-right: .7rem !important; }
-    .app-shell { border-radius: 0; border-left: none; border-right: none; padding: .85rem; }
+    .app-shell { border-radius: 24px; padding: .85rem; }
     .metric-row { grid-template-columns: 1fr; }
 }
 </style>
@@ -592,18 +612,38 @@ def relatorio_pdf(hist: list, titulo: str) -> bytes:
     return simple_pdf(lines, titulo)
 
 
+ICONS = {
+    "crane": '<svg viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M6 20V8h8"/><path d="M6 8l8-4 5 4"/><path d="M14 4v16"/><path d="M19 8v4"/><path d="M17 12h4"/></svg>',
+    "upload": '<svg viewBox="0 0 24 24"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>',
+    "user": '<svg viewBox="0 0 24 24"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>',
+    "folder": '<svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 17V10"/><path d="M9 13l3-3 3 3"/></svg>',
+    "camera": '<svg viewBox="0 0 24 24"><path d="M4 8h4l2-3h4l2 3h4v11H4z"/><circle cx="12" cy="13" r="4"/></svg>',
+    "pin": '<svg viewBox="0 0 24 24"><path d="M12 21s7-5.3 7-12a7 7 0 1 0-14 0c0 6.7 7 12 7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>',
+    "image": '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8" cy="10" r="1.6"/><path d="M21 16l-5-5-4 4-2-2-5 5"/></svg>',
+    "ia": '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 14V8"/><path d="M12 14l2-6 2 6"/><path d="M13 12h2"/></svg>',
+    "check": '<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>',
+    "clipboard": '<svg viewBox="0 0 24 24"><path d="M9 4h6l1 2h3v15H5V6h3z"/><path d="M9 4v4h6V4"/><path d="M8 12h8"/><path d="M8 16h6"/></svg>',
+    "calendar": '<svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M4 10h16"/></svg>',
+    "alert": '<svg viewBox="0 0 24 24"><path d="M12 8v5"/><path d="M12 17h.01"/><path d="M10.3 4.5 2.7 18a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 4.5a2 2 0 0 0-3.4 0z"/></svg>',
+}
+
+
+def icon_svg(name: str) -> str:
+    return ICONS.get(name, ICONS["alert"])
+
+
 def render_header(subtitle: str):
     st.markdown(
         f"""
         <div class="app-top">
           <div class="brand">
-            <div class="brand-mark">ðŸ—ï¸</div>
+            <div class="brand-mark">{icon_svg("crane")}</div>
             <div>
               <div class="brand-title">Registro de Rachaduras<br>e Fissuras</div>
               <div class="brand-sub">{esc(subtitle)}</div>
             </div>
           </div>
-          <div class="cloud-pill">â˜</div>
+          <div class="cloud-pill">{icon_svg("upload")}</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -612,7 +652,7 @@ def render_header(subtitle: str):
 
 def section(title: str, icon: str):
     st.markdown(
-        f'<div class="section-label"><span class="icon">{icon}</span>{esc(title)}</div>',
+        f'<div class="section-label"><span class="icon">{icon_svg(icon)}</span>{esc(title)}</div>',
         unsafe_allow_html=True,
     )
 
@@ -632,17 +672,17 @@ def hist_card(item: dict):
     thumb_html = (
         f'<img class="hist-thumb" src="data:image/jpeg;base64,{thumb}">'
         if thumb
-        else '<div class="hist-thumb" style="display:grid;place-items:center;">ðŸ“·</div>'
+        else f'<div class="hist-thumb" style="display:grid;place-items:center;color:var(--red);">{icon_svg("image")}</div>'
     )
     count = item.get("contagem_correta", item.get("n_det", 0))
-    mark = "!" if alerta else "âœ“"
+    mark = icon_svg("alert") if alerta else icon_svg("check")
     st.markdown(
         f"""
         <div class="hist-card{cls}">
           {thumb_html}
           <div style="min-width:0; flex:1;">
             <div class="hist-title">{esc(item.get("local", "Sem local"))}</div>
-            <div class="hist-meta">{esc(item.get("data", ""))} Â· {esc(count)} rachadura(s)</div>
+            <div class="hist-meta">{esc(item.get("data", ""))} &middot; {esc(count)} rachadura(s)</div>
             <div class="hist-person">{esc(item.get("colaborador", ""))}</div>
           </div>
           <div class="alert-mark">{mark}</div>
@@ -663,32 +703,29 @@ def show_history_list(hist: list, manage: bool = False):
         if manage:
             with col_action:
                 if st.session_state.del_confirm == idx:
-                    if st.button("âœ“", key=f"ok_{idx}", help="Confirmar"):
+                    if st.button("OK", key=f"ok_{idx}", help="Confirmar"):
                         st.session_state.historico.pop(idx)
                         save_historico(st.session_state.historico)
                         st.session_state.del_confirm = -1
                         st.rerun()
-                    if st.button("Ã—", key=f"no_{idx}", help="Cancelar"):
+                    if st.button("X", key=f"no_{idx}", help="Cancelar"):
                         st.session_state.del_confirm = -1
                         st.rerun()
-                elif st.button("ðŸ—‘", key=f"del_{idx}", help="Excluir"):
+                elif st.button("Del", key=f"del_{idx}", help="Excluir"):
                     st.session_state.del_confirm = idx
                     st.rerun()
 
 
 def page_inspecao():
     render_header("Inspetor de Qualidade - Engenharia Civil")
-    section("Colaborador", "ðŸ‘·")
+    section("Colaborador", "user")
 
-    col_nome, col_cargo = st.columns([1.45, 1])
-    with col_nome:
-        nome_colab = st.text_input(
-            "Nome do colaborador",
-            placeholder="Ex.: Raquel",
-            key="nome_colab",
-        )
-    with col_cargo:
-        cargo_colab = st.selectbox("Funcao / Cargo", CARGOS, key="cargo_colab")
+    nome_colab = st.text_input(
+        "Nome do colaborador",
+        placeholder="Ex.: Raquel",
+        key="nome_colab",
+    )
+    cargo_colab = st.selectbox("Funcao / Cargo", CARGOS, key="cargo_colab")
 
     if nome_colab:
         initials = "".join(part[:1] for part in nome_colab.split()[:2]).upper() or "R"
@@ -708,17 +745,17 @@ def page_inspecao():
             unsafe_allow_html=True,
         )
 
-    section("Envio de imagem", "ðŸ“")
+    section("Envio de imagem", "folder")
     uploaded = st.file_uploader(
         "Upload de arquivos",
         type=["jpg", "jpeg", "png", "bmp", "webp"],
         help="JPG, PNG, BMP ou WEBP ate 200MB.",
     )
 
-    section("Captura em campo", "ðŸ“·")
+    section("Captura em campo", "camera")
     camera_img = st.camera_input("Abrir camera", label_visibility="collapsed")
 
-    section("Informacoes da inspecao", "ðŸ“")
+    section("Informacoes da inspecao", "pin")
     local_obra = st.text_input(
         "Local da inspecao",
         value=st.session_state.local_input,
@@ -776,7 +813,7 @@ def page_resultado():
     st.markdown(
         f"""
         <div class="status-card {'ok' if not alerta else ''}">
-          <div class="status-icon">âœ“</div>
+          <div class="status-icon">{icon_svg("check")}</div>
           <div>
             <div class="status-title">Inspecao concluida</div>
             <div class="status-sub">{n_det} rachadura(s) detectada(s)</div>
@@ -786,12 +823,12 @@ def page_resultado():
         unsafe_allow_html=True,
     )
 
-    section("Imagem original", "ðŸ–¼")
+    section("Imagem original", "image")
     st.markdown('<div class="image-frame">', unsafe_allow_html=True)
     st.image(res["pil_orig"], width="stretch")
     st.markdown("</div>", unsafe_allow_html=True)
 
-    section("Deteccao por IA", "IA")
+    section("Deteccao por IA", "ia")
     st.markdown('<div class="image-frame">', unsafe_allow_html=True)
     st.image(res["annotated"], width="stretch")
     st.markdown("</div>", unsafe_allow_html=True)
@@ -879,7 +916,7 @@ def page_historico():
             (str(s["dias"]), "Dias"),
         ]
     )
-    section("Diario de obra", "ðŸ“‹")
+    section("Diario de obra", "clipboard")
     show_history_list(hist, manage=True)
 
     if hist:
@@ -931,7 +968,7 @@ def page_dashboard():
         )
     st.bar_chart(pd.DataFrame(chart_rows), x="dia", y=["inspecoes", "rachaduras"], width="stretch")
 
-    section("Registros do periodo", "ðŸ“†")
+    section("Registros do periodo", "calendar")
     show_history_list(hist_filtrado, manage=False)
 
     safe_day = re.sub(r"[^0-9A-Za-z_-]+", "_", normalize_text(selected_day).strip("_")) or "todos"
@@ -969,10 +1006,10 @@ for key, val in [
 
 
 with st.sidebar:
-    st.markdown("### ðŸ—ï¸ Residencia IA")
+    st.markdown("### Residencia IA")
     st.caption("Inspetor de Qualidade - Engenharia Civil")
     st.divider()
-    st.markdown("#### Ultimas inspeÃ§Ãµes")
+    st.markdown("#### Ultimas inspecoes")
     show_history_list(st.session_state.historico[-5:], manage=False)
 
 
