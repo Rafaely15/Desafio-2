@@ -33,6 +33,7 @@ DEVICE = 0 if torch.cuda.is_available() else "cpu"
 
 CARGOS = ["Engenheiro(a)", "Mestre de Obras", "Tecnico(a)", "Inspetor(a)", "Outro"]
 HISTORICO_FILE = Path("results/historico_inspecoes.json")
+PERFIL_FILE = Path("results/perfil_colaborador.json")
 HISTORICO_FILE.parent.mkdir(exist_ok=True)
 
 
@@ -514,6 +515,33 @@ def save_historico(hist: list):
     )
 
 
+def load_perfil() -> dict:
+    if PERFIL_FILE.exists():
+        try:
+            perfil = json.loads(PERFIL_FILE.read_text(encoding="utf-8"))
+            cargo = perfil.get("cargo_colab", CARGOS[0])
+            if cargo not in CARGOS:
+                cargo = CARGOS[0]
+            return {
+                "nome_colab": perfil.get("nome_colab", ""),
+                "cargo_colab": cargo,
+            }
+        except Exception:
+            pass
+    return {"nome_colab": "", "cargo_colab": CARGOS[0]}
+
+
+def save_perfil(nome: str, cargo: str):
+    PERFIL_FILE.write_text(
+        json.dumps(
+            {"nome_colab": nome.strip(), "cargo_colab": cargo},
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+
 def historico_to_csv(hist: list) -> bytes:
     buf = io.StringIO()
     campos = [
@@ -904,12 +932,18 @@ def page_inspecao():
     render_header("Inspetor de Qualidade - Engenharia Civil")
     section("Colaborador", "user")
 
+    perfil_nome_anterior = st.session_state.get("nome_colab", "")
+    perfil_cargo_anterior = st.session_state.get("cargo_colab", CARGOS[0])
     nome_colab = st.text_input(
         "Nome do colaborador",
         placeholder="Ex.: Raquel",
         key="nome_colab",
     )
     cargo_colab = st.selectbox("Funcao / Cargo", CARGOS, key="cargo_colab")
+    if nome_colab and (
+        nome_colab != perfil_nome_anterior or cargo_colab != perfil_cargo_anterior
+    ):
+        save_perfil(nome_colab, cargo_colab)
 
     if nome_colab:
         initials = "".join(part[:1] for part in nome_colab.split()[:2]).upper() or "R"
@@ -1068,6 +1102,7 @@ def page_resultado():
                 }
                 st.session_state.historico.append(entry)
                 save_historico(st.session_state.historico)
+                save_perfil(nome_colab, entry["cargo"])
                 st.success("Registro salvo no diario de obra.")
     with b2:
         if st.button("Adicionar observacao", width="stretch"):
@@ -1105,6 +1140,10 @@ def page_resultado():
             st.session_state.local_input = ""
             st.session_state.show_obs = False
             st.session_state.page = "Inicio"
+            save_perfil(
+                res.get("nome_colab") or st.session_state.get("nome_colab", ""),
+                res.get("cargo_colab") or st.session_state.get("cargo_colab", CARGOS[0]),
+            )
             st.rerun()
 
 
@@ -1195,6 +1234,8 @@ def page_dashboard():
         )
 
 
+perfil_colaborador = load_perfil()
+
 for key, val in [
     ("historico", load_historico()),
     ("resultado", None),
@@ -1203,6 +1244,8 @@ for key, val in [
     ("show_obs", False),
     ("del_confirm", -1),
     ("page", "Inicio"),
+    ("nome_colab", perfil_colaborador["nome_colab"]),
+    ("cargo_colab", perfil_colaborador["cargo_colab"]),
 ]:
     if key not in st.session_state:
         st.session_state[key] = val
